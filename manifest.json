@@ -1,8 +1,12 @@
 {
   "manifest_version": 3,
   "name": "SafeWallet AI",
-  "version": "0.1.0",
-  "description": "A Web3 security assistant prototype for reviewing wallet and contract addresses.",
+  "version": "0.2.0",
+  "description": "A Web3 security assistant prototype with live address and token risk lookups.",
+  "permissions": [],
+  "host_permissions": [
+    "https://api.gopluslabs.io/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "SafeWallet AI"
