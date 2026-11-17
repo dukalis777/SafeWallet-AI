@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeWallet AI</title>
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand-mark">S</div>
+      <div>
+        <h1>SafeWallet <span>AI</span></h1>
+        <p>Web3 security assistant</p>
+      </div>
+      <div class="status"><i></i> DEMO</div>
+    </header>
+
+    <section class="intro">
+      <div class="shield">◆</div>
+      <h2>Check before you trust.</h2>
+      <p>Review an address before interacting with it.</p>
+    </section>
+
+    <form id="scan-form">
+      <label for="network">NETWORK</label>
+      <select id="network">
+        <option value="ethereum">Ethereum</option>
+        <option value="base">Base</option>
+        <option value="bnb">BNB Chain</option>
+        <option value="supra">Supra</option>
+      </select>
+
+      <label for="address">WALLET OR CONTRACT ADDRESS</label>
+      <textarea id="address" rows="3" placeholder="Paste an address to review..." spellcheck="false"></textarea>
+      <button type="submit" id="scan-button">Review address <span>→</span></button>
+    </form>
+
+    <section id="result" class="result hidden" aria-live="polite"></section>
+
+    <footer>
+      <p><strong>Prototype notice:</strong> This version checks address format only. It does not detect scams, inspect contracts, or guarantee safety.</p>
+      <span>SAFEWALLET AI · PROTOTYPE 0.1</span>
+    </footer>
+  </main>
+  <script src="src/popup.js"></script>
+</body>
+</html>
