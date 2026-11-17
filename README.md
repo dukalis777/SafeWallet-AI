@@ -19,7 +19,7 @@ An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 ## Data and privacy
 When a user runs a check, the public address is sent to GoPlus Security's API. The extension does not ask for or transmit seed phrases or private keys. The current code does not read webpage content or intercept wallet-signing requests.
 
-GoPlus documents a free API tier with a limit of 30 calls per minute. Each check currently makes up to two requests (address reputation and token security). See:
+GoPlus publishes usage limits and access tiers that may vary by API product and account. Each check currently makes up to two requests (address reputation and token security). Check the current official documentation for applicable limits. See:
 - https://docs.gopluslabs.io/reference/addresscontractusingget_1
 - https://docs.gopluslabs.io/reference/response-details-1
 - https://docs.gopluslabs.io/reference/support
