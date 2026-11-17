@@ -1,48 +1,142 @@
 const form = document.getElementById("scan-form");
 const addressInput = document.getElementById("address");
 const networkInput = document.getElementById("network");
+const scanButton = document.getElementById("scan-button");
 const result = document.getElementById("result");
 
-function validateAddress(address, network) {
-  const value = address.trim();
+const NETWORKS = {
+  ethereum: { label: "Ethereum", chainId: "1" },
+  base: { label: "Base", chainId: "8453" },
+  bnb: { label: "BNB Chain", chainId: "56" }
+};
 
-  if (!value) {
-    return { valid: false, message: "Paste an address first." };
-  }
-
-  if (network === "ethereum" || network === "base" || network === "bnb") {
-    const valid = /^0x[a-fA-F0-9]{40}$/.test(value);
-    return {
-      valid,
-      message: valid
-        ? "The address matches the expected EVM format."
-        : "This does not look like a standard EVM address (expected 0x followed by 40 hexadecimal characters)."
-    };
-  }
-
-  // Supra address formats may differ by account/address type.
-  // Avoid claiming full validation until official format handling is integrated.
-  return {
-    valid: value.length >= 10,
-    message: value.length >= 10
-      ? "Address entered. Full Supra address validation is not implemented yet."
-      : "The entered value looks too short. Full Supra address validation is not implemented yet."
-  };
+function isEvmAddress(address) {
+  return /^0x[a-fA-F0-9]{40}$/.test(address.trim());
 }
 
-form.addEventListener("submit", (event) => {
+function addText(parent, tagName, text, className = "") {
+  const node = document.createElement(tagName);
+  node.textContent = text;
+  if (className) node.className = className;
+  parent.appendChild(node);
+  return node;
+}
+
+function renderMessage(title, message, tone = "info") {
+  result.replaceChildren();
+  result.classList.remove("hidden");
+  const card = document.createElement("div");
+  card.className = `summary ${tone}`;
+  addText(card, "h3", title);
+  addText(card, "p", message);
+  result.appendChild(card);
+}
+
+function renderScan(scan, networkLabel) {
+  result.replaceChildren();
+  result.classList.remove("hidden");
+
+  let heading = "No listed risk flags returned";
+  let tone = "unknown";
+
+  if (scan.hasHighRiskFlag) {
+    heading = "High-risk indicators found";
+    tone = "danger";
+  } else if (scan.signals.length) {
+    heading = "Review recommended";
+    tone = "warning";
+  } else if (scan.hasAddressData || scan.hasTokenData) {
+    heading = "No listed risk flags found";
+    tone = "caution";
+  }
+
+  const summary = document.createElement("div");
+  summary.className = `summary ${tone}`;
+  addText(summary, "span", tone === "danger" ? "HIGH RISK SIGNALS" : tone === "warning" ? "REVIEW" : tone === "caution" ? "NO LISTED FLAGS" : "LIMITED DATA", "tag");
+  addText(summary, "h3", heading);
+  addText(summary, "p", `${networkLabel} · ${scan.address.slice(0, 10)}…${scan.address.slice(-6)}`);
+  result.appendChild(summary);
+
+  if (scan.signals.length) {
+    const section = document.createElement("div");
+    section.className = "details";
+    addText(section, "h4", "Signals reported by GoPlus");
+    const list = document.createElement("ul");
+    scan.signals.forEach(signal => {
+      const item = document.createElement("li");
+      addText(item, "span", signal.label);
+      addText(item, "small", signal.source);
+      list.appendChild(item);
+    });
+    section.appendChild(list);
+    result.appendChild(section);
+  } else if (scan.hasAddressData) {
+    addText(result, "p", "The address reputation check returned no listed malicious-activity flags.");
+  } else {
+    addText(result, "p", "No address-reputation record was returned for this address.");
+  }
+
+  if (!scan.hasTokenData) {
+    addText(result, "p", "No token-security record was returned. The address may be a wallet or a token not covered by this lookup.");
+  }
+
+  if (scan.addressError || scan.tokenError) {
+    const errors = [scan.addressError, scan.tokenError].filter(Boolean).join(" · ");
+    addText(result, "p", `Some checks were unavailable: ${errors}`, "error-text");
+  }
+
+  const notice = document.createElement("p");
+  notice.className = "notice";
+  notice.textContent = "A missing flag or an empty result does not prove an address is safe. This check does not simulate your transaction or inspect the exact permissions you are about to sign.";
+  result.appendChild(notice);
+
+  addText(result, "p", "Data provider: GoPlus Security", "provider");
+}
+
+form.addEventListener("submit", async event => {
   event.preventDefault();
 
-  const network = networkInput.value;
+  const networkKey = networkInput.value;
   const address = addressInput.value.trim();
-  const check = validateAddress(address, network);
 
-  result.classList.remove("hidden");
-  result.innerHTML = `
-    <span class="tag">${check.valid ? "FORMAT CHECK" : "INPUT CHECK"}</span>
-    <h3>${check.valid ? "Address format looks valid" : "Address needs attention"}</h3>
-    <p>${check.message}</p>
-    <p><strong>Network:</strong> ${network.toUpperCase()}</p>
-    <p><strong>Important:</strong> A valid format does not mean an address or contract is safe. Threat-intelligence and on-chain analysis are not connected in this prototype.</p>
-  `;
+  if (networkKey === "supra") {
+    renderMessage(
+      "Supra checks are not connected yet",
+      "The current GoPlus lookup integration covers selected EVM networks. Supra-specific security analysis is planned as a separate integration."
+    );
+    return;
+  }
+
+  if (!isEvmAddress(address)) {
+    renderMessage(
+      "Check the address format",
+      "Enter a valid EVM address: 0x followed by 40 hexadecimal characters.",
+      "warning"
+    );
+    return;
+  }
+
+  const network = NETWORKS[networkKey];
+  if (!network) {
+    renderMessage("Unsupported network", "Choose one of the currently supported networks.", "warning");
+    return;
+  }
+
+  scanButton.disabled = true;
+  scanButton.textContent = "Checking security data…";
+  renderMessage("Checking address", "Requesting address reputation and token-risk data from GoPlus.");
+
+  try {
+    const scan = await window.SafeWalletGoPlus.scanAddress(address, network.chainId);
+    renderScan(scan, network.label);
+  } catch (error) {
+    renderMessage(
+      "Security lookup unavailable",
+      error && error.message ? error.message : "The security provider could not be reached. Try again later.",
+      "warning"
+    );
+  } finally {
+    scanButton.disabled = false;
+    scanButton.innerHTML = 'Run security checks <span>→</span>';
+  }
 });
