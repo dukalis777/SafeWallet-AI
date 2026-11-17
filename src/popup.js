@@ -76,7 +76,33 @@ function renderScan(scan, networkLabel) {
     const list = document.createElement("ul");
     scan.signals.forEach(signal => {
       const item = document.createElement("li");
-      addText(item, "span", signal.label);
+      const copy = document.createElement("div");
+      copy.className = "signal-copy";
+      addText(copy, "span", signal.label, "signal-title");
+
+      let explanation = "This signal deserves review. Check the contract details and permissions before interacting.";
+      if (signal.key === "is_mintable") {
+        explanation = "The contract exposes a token-minting function. Check who is authorized to mint, whether supply limits exist, and whether minting is controlled. This feature alone does not prove the token is malicious.";
+      } else if (signal.key === "hidden_owner") {
+        explanation = "The contract may contain owner privileges that are not immediately obvious. Review the verified source code and the privileges available to the owner.";
+      } else if (signal.key === "can_take_back_ownership") {
+        explanation = "Ownership may be recoverable or reassigned through contract logic. Review who can trigger this and what privileges ownership grants.";
+      } else if (signal.key === "owner_change_balance") {
+        explanation = "The contract may allow an owner to modify token balances. This can create significant holder risk; inspect the relevant source code and permissions.";
+      } else if (signal.key === "is_honeypot") {
+        explanation = "The provider flags potential honeypot behavior. Selling or transferring may be restricted. Do not interact until the contract has been independently reviewed.";
+      } else if (signal.key === "is_blacklisted") {
+        explanation = "The contract may allow selected addresses to be blocked from transfers. Check who controls this feature and how it can be used.";
+      } else if (signal.key === "slippage_modifiable") {
+        explanation = "Buy or sell fees may be changeable. Check who can change them and whether there are enforceable limits.";
+      } else if (signal.key === "is_proxy") {
+        explanation = "This contract appears to use a proxy pattern. Its implementation may be upgradeable, so review who controls upgrades and whether changes are timelocked.";
+      } else if (signal.key === "is_open_source") {
+        explanation = "The provider reports that verified source code is unavailable. This limits independent review of the contract's behavior.";
+      }
+
+      addText(copy, "p", explanation, "signal-explanation");
+      item.appendChild(copy);
       addText(item, "small", signal.source);
       list.appendChild(item);
     });
