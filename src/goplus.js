@@ -26,6 +26,8 @@ const TOKEN_FLAGS = [
   ["is_mintable", "Token has a mint function"],
   ["slippage_modifiable", "Buy/sell tax may be modifiable"],
   ["transfer_pausable", "Transfers may be paused"],
+  ["is_proxy", "Upgradeable proxy contract detected"],
+  ["is_open_source", "Contract source is not verified", "inverse"],
   ["selfdestruct", "Self-destruct capability detected"],
   ["gas_abuse", "Gas-abuse behavior detected"]
 ];
@@ -108,7 +110,7 @@ async function scanAddress(address, chainId) {
     : [];
 
   const tokenFlags = tokenRecord
-    ? TOKEN_FLAGS.filter(([key]) => isFlagged(tokenRecord[key]))
+    ? TOKEN_FLAGS.filter(([key, , mode]) => mode === "inverse" ? tokenRecord[key] === "0" || tokenRecord[key] === 0 : isFlagged(tokenRecord[key]))
         .map(([key, label]) => ({ key, label, source: "Token security" }))
     : [];
 
@@ -117,7 +119,7 @@ async function scanAddress(address, chainId) {
     for (const key of ["buy_tax", "sell_tax"]) {
       const raw = tokenRecord[key];
       const tax = raw === undefined || raw === null || raw === "" ? NaN : Number(raw);
-      if (Number.isFinite(tax) && tax > 10) {
+      if (Number.isFinite(tax) && tax > 0.1) {
         taxSignals.push({
           key,
           label: `${key === "buy_tax" ? "Buy" : "Sell"} tax reported above 10% (${(tax * 100).toFixed(1)}%)`,
