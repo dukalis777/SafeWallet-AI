@@ -36,23 +36,35 @@ function renderScan(scan, networkLabel) {
   result.replaceChildren();
   result.classList.remove("hidden");
 
-  let heading = "No listed risk flags returned";
+  let heading = "Insufficient security data";
+  let tag = "LIMITED DATA";
   let tone = "unknown";
 
   if (scan.hasHighRiskFlag) {
     heading = "High-risk indicators found";
+    tag = "HIGH RISK SIGNALS";
     tone = "danger";
   } else if (scan.signals.length) {
     heading = "Review recommended";
+    tag = "RISK SIGNALS";
     tone = "warning";
-  } else if (scan.hasAddressData || scan.hasTokenData) {
-    heading = "No listed risk flags found";
+  } else if (scan.hasAddressData && scan.hasTokenData) {
+    heading = "No listed risk flags returned";
+    tag = "ADDRESS + TOKEN CHECKED";
     tone = "caution";
+  } else if (scan.hasAddressData) {
+    heading = "Partial check: address reputation only";
+    tag = "PARTIAL CHECK";
+    tone = "unknown";
+  } else if (scan.hasTokenData) {
+    heading = "Partial check: token security only";
+    tag = "PARTIAL CHECK";
+    tone = "unknown";
   }
 
   const summary = document.createElement("div");
   summary.className = `summary ${tone}`;
-  addText(summary, "span", tone === "danger" ? "HIGH RISK SIGNALS" : tone === "warning" ? "REVIEW" : tone === "caution" ? "NO LISTED FLAGS" : "LIMITED DATA", "tag");
+  addText(summary, "span", tag, "tag");
   addText(summary, "h3", heading);
   addText(summary, "p", `${networkLabel} · ${scan.address.slice(0, 10)}…${scan.address.slice(-6)}`);
   result.appendChild(summary);
@@ -70,15 +82,13 @@ function renderScan(scan, networkLabel) {
     });
     section.appendChild(list);
     result.appendChild(section);
-  } else if (scan.hasAddressData) {
-    addText(result, "p", "The address reputation check returned no listed malicious-activity flags.");
-  } else {
-    addText(result, "p", "No address-reputation record was returned for this address.");
   }
 
-  if (!scan.hasTokenData) {
-    addText(result, "p", "No token-security record was returned. The address may be a wallet or a token not covered by this lookup.");
-  }
+  const checks = document.createElement("div");
+  checks.className = "check-status";
+  addText(checks, "p", `Address reputation: ${scan.hasAddressData ? "data returned; no listed flags found" : "no record returned"}`);
+  addText(checks, "p", `Token security: ${scan.hasTokenData ? "token record returned" : "not assessed — no token record returned"}`);
+  result.appendChild(checks);
 
   if (scan.addressError || scan.tokenError) {
     const errors = [scan.addressError, scan.tokenError].filter(Boolean).join(" · ");
