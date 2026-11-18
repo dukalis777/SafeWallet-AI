@@ -2,7 +2,7 @@
 
 An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 
-## Prototype v0.4.3
+## Prototype v0.4.4
 - GoPlus Security lookups for wallet address reputation and token security.
 - Automatic recent-history ERC-20 approval scan for a public wallet address on Ethereum, Base, and BNB Chain.
 - Filters ERC-20 `Approval(address,address,uint256)` logs by the indexed owner address.
