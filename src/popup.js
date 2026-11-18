@@ -270,3 +270,151 @@ allowanceForm.addEventListener("submit", async event => {
     allowanceButton.innerHTML = 'Check allowance <span>→</span>';
   }
 });
+
+
+const walletApprovalForm = document.getElementById("wallet-approval-form");
+const scanOwnerInput = document.getElementById("scan-owner-address");
+const walletApprovalButton = document.getElementById("wallet-approval-button");
+const walletApprovalResult = document.getElementById("wallet-approval-result");
+
+function renderWalletApprovalMessage(title, message, tone = "unknown") {
+  walletApprovalResult.replaceChildren();
+  walletApprovalResult.classList.remove("hidden");
+  const card = document.createElement("div");
+  card.className = `summary ${tone}`;
+  addText(card, "h3", title);
+  addText(card, "p", message);
+  walletApprovalResult.appendChild(card);
+}
+
+function addExplorerLink(parent, base, path, label) {
+  const link = document.createElement("a");
+  link.href = base + path;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = label;
+  link.className = "explorer-link";
+  parent.appendChild(link);
+  return link;
+}
+
+function shortAddress(address) {
+  return address.slice(0, 8) + "…" + address.slice(-6);
+}
+
+function renderWalletApprovalScan(scan) {
+  walletApprovalResult.replaceChildren();
+  walletApprovalResult.classList.remove("hidden");
+
+  const unlimitedCount = scan.activeApprovals.filter(item => item.status === "unlimited").length;
+  const veryLargeCount = scan.activeApprovals.filter(item => item.status === "very-large").length;
+
+  let tone = "caution";
+  let title = "No active ERC-20 allowances found in this scan";
+  let tag = "NO ACTIVE ALLOWANCES IN RANGE";
+  if (unlimitedCount > 0) {
+    tone = "danger";
+    title = "Unlimited allowances found";
+    tag = "HIGH EXPOSURE";
+  } else if (scan.activeApprovals.length > 0) {
+    tone = "warning";
+    title = "Active allowances found";
+    tag = "REVIEW APPROVALS";
+  }
+
+  const summary = document.createElement("div");
+  summary.className = `summary ${tone}`;
+  addText(summary, "span", tag, "tag");
+  addText(summary, "h3", title);
+  addText(summary, "p", `${scan.network} · wallet ${shortAddress(scan.ownerAddress)}`);
+  walletApprovalResult.appendChild(summary);
+
+  const stats = document.createElement("div");
+  stats.className = "check-status";
+  addText(stats, "p", `Scanned blocks: ${scan.fromBlock.toLocaleString()} – ${scan.toBlock.toLocaleString()} (${scan.windowBlocks.toLocaleString()} blocks)`);
+  addText(stats, "p", `Approval events found: ${scan.approvalEventsFound}`);
+  addText(stats, "p", `Unique token + spender pairs: ${scan.discoveredPairs}`);
+  addText(stats, "p", `Pairs currently at zero: ${scan.inactivePairs}`);
+  addText(stats, "p", `Active allowances: ${scan.activeApprovals.length}`);
+  if (scan.failedPairs) addText(stats, "p", `Pairs that could not be read: ${scan.failedPairs}`, "error-text");
+  walletApprovalResult.appendChild(stats);
+
+  if (scan.activeApprovals.length) {
+    const listSection = document.createElement("div");
+    listSection.className = "details";
+    addText(listSection, "h4", "Current active allowances");
+    const list = document.createElement("ul");
+
+    scan.activeApprovals.slice(0, 30).forEach(item => {
+      const li = document.createElement("li");
+      li.className = "approval-row";
+      const copy = document.createElement("div");
+      copy.className = "signal-copy";
+      const statusLabel = item.status === "unlimited" ? "UNLIMITED" : item.status === "very-large" ? "VERY LARGE" : "ACTIVE";
+      const statusClass = item.status === "unlimited" || item.status === "very-large" ? "approval-risk" : "approval-active";
+      addText(copy, "span", statusLabel, `approval-status ${statusClass}`);
+      addText(copy, "strong", `Allowance: ${item.formattedAllowance}`, "approval-amount");
+      const links = document.createElement("div");
+      links.className = "approval-links";
+      addExplorerLink(links, item.explorer, `/address/${item.token}`, "Token");
+      addExplorerLink(links, item.explorer, `/address/${item.spender}`, "Spender");
+      copy.appendChild(links);
+      li.appendChild(copy);
+      list.appendChild(li);
+    });
+    listSection.appendChild(list);
+    walletApprovalResult.appendChild(listSection);
+
+    if (scan.activeApprovals.length > 30) {
+      addText(walletApprovalResult, "p", `Showing 30 of ${scan.activeApprovals.length} active allowances.`);
+    }
+  } else if (scan.inactivePairs > 0) {
+    addText(walletApprovalResult, "p", "The scan found prior Approval events for this wallet, but the current allowance reads for those pairs returned zero. This can include previously revoked approvals.");
+  }
+
+  const note = document.createElement("p");
+  note.className = "notice";
+  note.textContent = "Coverage is limited to the displayed recent block range. An empty result does not prove the wallet has no older active approvals. ERC-721 / ERC-1155 approvals and signature-only permissions are not included.";
+  walletApprovalResult.appendChild(note);
+  addText(walletApprovalResult, "p", `Read-only scan via ${scan.rpcHost}. No transactions were sent.`, "provider");
+}
+
+walletApprovalForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const networkKey = networkInput.value;
+  const owner = scanOwnerInput.value.trim();
+
+  if (networkKey === "supra") {
+    renderWalletApprovalMessage("Supra scan is not implemented yet", "Automatic approval scanning currently supports Ethereum, Base, and BNB Chain only.");
+    return;
+  }
+
+  if (!window.SafeWalletAllowance.isValidEvmAddress(owner)) {
+    renderWalletApprovalMessage("Check the wallet address", "Enter a valid EVM public wallet address (0x followed by 40 hexadecimal characters).", "warning");
+    return;
+  }
+
+  walletApprovalButton.disabled = true;
+  walletApprovalButton.textContent = "Scanning recent approvals…";
+  renderWalletApprovalMessage("Starting wallet scan", "Reading recent Approval events from public blockchain RPC endpoints.");
+
+  try {
+    const scan = await window.SafeWalletApprovalScan.scanErc20Approvals(networkKey, owner, progress => {
+      if (progress.phase === "logs") {
+        renderWalletApprovalMessage("Scanning Approval events", `Reading block batches: ${progress.done} / ${progress.total}. This may take a little while on public RPC endpoints.`);
+      } else if (progress.phase === "allowances") {
+        renderWalletApprovalMessage("Checking current allowances", `Reading current allowance values: ${progress.done} / ${progress.total}.`);
+      }
+    });
+    renderWalletApprovalScan(scan);
+  } catch (error) {
+    renderWalletApprovalMessage(
+      "Wallet scan unavailable",
+      error && error.message ? error.message : "The public RPC provider could not complete the scan. Try again later or use another network.",
+      "warning"
+    );
+  } finally {
+    walletApprovalButton.disabled = false;
+    walletApprovalButton.innerHTML = 'Scan wallet approvals <span>→</span>';
+  }
+});
