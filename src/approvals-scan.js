@@ -127,7 +127,9 @@ function decodeApprovalEvent(log) {
   }
 
   // ERC-20 Approval has three topics and one uint256 value in data.
-  if (log.topics.length === 3 && typeof log.data === "string" &&
+  if (log.topics.length === 3 &&
+      /^0x[a-fA-F0-9]{64}$/.test(log.topics[2] || "") &&
+      typeof log.data === "string" &&
       /^0x[0-9a-fA-F]{64}$/.test(log.data)) {
     return {
       kind: "erc20",
@@ -430,6 +432,7 @@ async function scanErc20Approvals(networkKey, ownerAddress, apiKey, requestedWin
     truncatedLogs: approvalLogResult.truncated || operatorLogResult.truncated,
     maxPairs: MAX_APPROVAL_PAIRS,
     indexer: "Etherscan API V2",
+    explorer: network.explorer,
     rpcHost: new URL(currentRpc.endpoint).host
   };
 }
