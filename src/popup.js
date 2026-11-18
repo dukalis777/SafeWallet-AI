@@ -274,6 +274,7 @@ allowanceForm.addEventListener("submit", async event => {
 
 const walletApprovalForm = document.getElementById("wallet-approval-form");
 const scanOwnerInput = document.getElementById("scan-owner-address");
+const approvalScanRange = document.getElementById("approval-scan-range");
 const walletApprovalButton = document.getElementById("wallet-approval-button");
 const walletApprovalResult = document.getElementById("wallet-approval-result");
 const etherscanApiKeyInput = document.getElementById("etherscan-api-key");
@@ -350,30 +351,90 @@ function shortAddress(address) {
   return address.slice(0, 8) + "…" + address.slice(-6);
 }
 
+function renderApprovalSection(title, items, network) {
+  if (!items.length) return;
+
+  const section = document.createElement("div");
+  section.className = "details";
+  addText(section, "h4", title);
+  const list = document.createElement("ul");
+
+  items.slice(0, 30).forEach(item => {
+    const li = document.createElement("li");
+    li.className = "approval-row";
+    const copy = document.createElement("div");
+    copy.className = "signal-copy";
+
+    if (item.kind === "erc20") {
+      const statusLabel = item.status === "unlimited" ? "UNLIMITED" : item.status === "very-large" ? "VERY LARGE" : "ACTIVE";
+      const statusClass = item.status === "unlimited" || item.status === "very-large" ? "approval-risk" : "approval-active";
+      addText(copy, "span", statusLabel, `approval-status ${statusClass}`);
+      addText(copy, "strong", `Allowance: ${item.formattedAllowance}`, "approval-amount");
+      const links = document.createElement("div");
+      links.className = "approval-links";
+      addExplorerLink(links, network.explorer, `/address/${item.token}`, "Token");
+      addExplorerLink(links, network.explorer, `/address/${item.spender}`, "Spender");
+      copy.appendChild(links);
+    } else if (item.kind === "nft-token") {
+      addText(copy, "span", "NFT TOKEN APPROVAL", "approval-status approval-active");
+      addText(copy, "strong", `Token ID: ${item.tokenId}`, "approval-amount");
+      addText(copy, "p", `Approved operator: ${shortAddress(item.currentApproved)}`, "signal-explanation");
+      const links = document.createElement("div");
+      links.className = "approval-links";
+      addExplorerLink(links, network.explorer, `/address/${item.token}`, "Collection");
+      addExplorerLink(links, network.explorer, `/address/${item.currentApproved}`, "Operator");
+      copy.appendChild(links);
+    } else if (item.kind === "nft-operator") {
+      addText(copy, "span", item.standard.toUpperCase() + " OPERATOR", "approval-status approval-risk");
+      addText(copy, "strong", `Operator: ${shortAddress(item.operator)}`, "approval-amount");
+      const links = document.createElement("div");
+      links.className = "approval-links";
+      addExplorerLink(links, network.explorer, `/address/${item.token}`, "Collection");
+      addExplorerLink(links, network.explorer, `/address/${item.operator}`, "Operator");
+      copy.appendChild(links);
+    }
+
+    li.appendChild(copy);
+    list.appendChild(li);
+  });
+
+  section.appendChild(list);
+  walletApprovalResult.appendChild(section);
+
+  if (items.length > 30) {
+    addText(walletApprovalResult, "p", `Showing 30 of ${items.length} active entries in this section.`);
+  }
+}
+
 function renderWalletApprovalScan(scan) {
   walletApprovalResult.replaceChildren();
   walletApprovalResult.classList.remove("hidden");
 
   const unlimitedCount = scan.activeApprovals.filter(item => item.status === "unlimited").length;
   const veryLargeCount = scan.activeApprovals.filter(item => item.status === "very-large").length;
+  const totalActive = scan.activeApprovals.length + scan.activeNftTokenApprovals.length + scan.activeNftOperators.length;
+  const totalDiscovered = scan.discoveredPairs + scan.discoveredNftTokenApprovals + scan.discoveredNftOperators;
+  const anyFailures = scan.failedPairs + scan.failedNftTokenPairs + scan.failedNftOperatorPairs;
 
-  let tone = "caution";
-  let title = scan.discoveredPairs === 0
-    ? "No Approval events found in the scanned range"
-    : "No active allowances found among scanned pairs";
-  let tag = scan.discoveredPairs === 0 ? "NO EVENTS IN RANGE" : "NO ACTIVE ALLOWANCES IN RANGE";
+  let tone = totalActive ? "warning" : "caution";
+  let title = totalDiscovered === 0
+    ? "No standard approval events found in the scanned range"
+    : totalActive === 0
+      ? "No active permissions found among scanned events"
+      : "Active permissions found";
+  let tag = totalActive ? "REVIEW PERMISSIONS" : totalDiscovered ? "NO ACTIVE PERMISSIONS" : "NO EVENTS IN RANGE";
 
-  if (unlimitedCount > 0) {
+  if (unlimitedCount > 0 || scan.activeNftOperators.length > 0) {
     tone = "danger";
-    title = "Unlimited allowances found";
+    title = "Broad or unlimited permissions found";
     tag = "HIGH EXPOSURE";
-  } else if (scan.activeApprovals.length > 0) {
+  } else if (totalActive > 0) {
     tone = "warning";
-    title = "Active allowances found";
-    tag = "REVIEW APPROVALS";
-  } else if (scan.failedPairs > 0) {
+    title = "Active permissions found";
+    tag = "REVIEW PERMISSIONS";
+  } else if (anyFailures > 0) {
     tone = "warning";
-    title = "Allowance scan incomplete";
+    title = "Permission scan incomplete";
     tag = "CHECK INCOMPLETE";
   }
 
@@ -387,57 +448,33 @@ function renderWalletApprovalScan(scan) {
   const stats = document.createElement("div");
   stats.className = "check-status";
   addText(stats, "p", `Scanned blocks: ${scan.fromBlock.toLocaleString()} – ${scan.toBlock.toLocaleString()} (${scan.windowBlocks.toLocaleString()} blocks)`);
-  addText(stats, "p", `Approval events found: ${scan.approvalEventsFound}`);
-  addText(stats, "p", `Unique token + spender pairs: ${scan.discoveredPairs}`);
-  addText(stats, "p", `Pairs currently at zero: ${scan.inactivePairs}`);
-  addText(stats, "p", `Active allowances: ${scan.activeApprovals.length}`);
-  if (scan.failedPairs) addText(stats, "p", `Pairs that could not be read: ${scan.failedPairs}`, "error-text");
-  if (scan.truncatedPairs) {
-    addText(stats, "p", `The scan found more than ${scan.maxPairs} unique pairs. Only the ${scan.maxPairs} most recently active pairs were checked.`, "error-text");
+  addText(stats, "p", `ERC-20 token/spender pairs: ${scan.discoveredPairs} discovered · ${scan.activeApprovals.length} active · ${scan.inactivePairs} zero`);
+  addText(stats, "p", `ERC-721 single-token approvals: ${scan.discoveredNftTokenApprovals} found · ${scan.activeNftTokenApprovals.length} active`);
+  addText(stats, "p", `NFT operator approvals: ${scan.discoveredNftOperators} found · ${scan.activeNftOperators.length} active`);
+  addText(stats, "p", `Events indexed: ${scan.approvalEventsFound} Approval · ${scan.nftOperatorEventsFound} ApprovalForAll`);
+  if (anyFailures) addText(stats, "p", `Current-state checks failed: ERC-20 ${scan.failedPairs}, NFT token ${scan.failedNftTokenPairs}, NFT operator ${scan.failedNftOperatorPairs}`, "error-text");
+  if (scan.truncatedErc20Pairs || scan.truncatedNftTokenPairs || scan.truncatedNftOperators) {
+    addText(stats, "p", `One or more categories exceeded the ${scan.maxPairs} pair limit; some pairs were not checked.`, "error-text");
   }
   if (scan.truncatedLogs) {
-    addText(stats, "p", "The Etherscan page limit was reached. Some older or additional Approval events in this block range may be missing.", "error-text");
+    addText(stats, "p", "The Etherscan 20-page limit was reached for at least one event type. Some events in this block range may be missing.", "error-text");
   }
   walletApprovalResult.appendChild(stats);
 
-  if (scan.activeApprovals.length) {
-    const listSection = document.createElement("div");
-    listSection.className = "details";
-    addText(listSection, "h4", "Current active allowances");
-    const list = document.createElement("ul");
+  const network = { explorer: scan.explorer };
+  renderApprovalSection("Active ERC-20 allowances", scan.activeApprovals, network);
+  renderApprovalSection("Active ERC-721 token approvals", scan.activeNftTokenApprovals, network);
+  renderApprovalSection("Active ERC-721 / ERC-1155 operator approvals", scan.activeNftOperators, network);
 
-    scan.activeApprovals.slice(0, 30).forEach(item => {
-      const li = document.createElement("li");
-      li.className = "approval-row";
-      const copy = document.createElement("div");
-      copy.className = "signal-copy";
-      const statusLabel = item.status === "unlimited" ? "UNLIMITED" : item.status === "very-large" ? "VERY LARGE" : "ACTIVE";
-      const statusClass = item.status === "unlimited" || item.status === "very-large" ? "approval-risk" : "approval-active";
-      addText(copy, "span", statusLabel, `approval-status ${statusClass}`);
-      addText(copy, "strong", `Allowance: ${item.formattedAllowance}`, "approval-amount");
-      const links = document.createElement("div");
-      links.className = "approval-links";
-      addExplorerLink(links, item.explorer, `/address/${item.token}`, "Token");
-      addExplorerLink(links, item.explorer, `/address/${item.spender}`, "Spender");
-      copy.appendChild(links);
-      li.appendChild(copy);
-      list.appendChild(li);
-    });
-    listSection.appendChild(list);
-    walletApprovalResult.appendChild(listSection);
-
-    if (scan.activeApprovals.length > 30) {
-      addText(walletApprovalResult, "p", `Showing 30 of ${scan.activeApprovals.length} active allowances.`);
-    }
-  } else if (scan.inactivePairs > 0) {
-    addText(walletApprovalResult, "p", "The scan found prior Approval events for this wallet, but the current allowance reads for those pairs returned zero. This can include previously revoked approvals.");
+  if (!totalActive && totalDiscovered > 0) {
+    addText(walletApprovalResult, "p", "The scanner found prior approval events, but the current on-chain checks returned no active permission for the discovered entries.");
   }
 
   const note = document.createElement("p");
   note.className = "notice";
-  note.textContent = "Coverage is limited to the displayed recent block range. An empty result does not prove the wallet has no older active approvals. ERC-721 / ERC-1155 approvals and signature-only permissions are not included.";
+  note.textContent = "Coverage is limited to the selected block range. Older approvals outside that range, non-standard NFT permissions, and signature-based permits may be missed. An empty result does not prove the wallet has no approvals.";
   walletApprovalResult.appendChild(note);
-  addText(walletApprovalResult, "p", `Approval events indexed by ${scan.indexer}; current allowances read via ${scan.rpcHost}. No transactions were sent.`, "provider");
+  addText(walletApprovalResult, "p", `Historical events indexed by ${scan.indexer}; current permissions read via ${scan.rpcHost}. No transactions were sent.`, "provider");
 }
 
 walletApprovalForm.addEventListener("submit", async event => {
@@ -473,11 +510,12 @@ walletApprovalForm.addEventListener("submit", async event => {
   renderWalletApprovalMessage("Starting wallet scan", "Getting the latest block, then requesting indexed Approval events from Etherscan.");
 
   try {
-    const scan = await window.SafeWalletApprovalScan.scanErc20Approvals(networkKey, owner, apiKey, progress => {
+    const selectedWindow = Number(approvalScanRange.value);
+    const scan = await window.SafeWalletApprovalScan.scanErc20Approvals(networkKey, owner, apiKey, selectedWindow, progress => {
       if (progress.phase === "logs") {
-        renderWalletApprovalMessage("Reading indexed Approval events", `Etherscan page ${progress.page} / ${progress.maxPages}; ${progress.eventsFound.toLocaleString()} events found so far.`);
+        renderWalletApprovalMessage(`Reading ${progress.eventLabel || "approval"} events`, `Etherscan page ${progress.page} / ${progress.maxPages}; ${progress.eventsFound.toLocaleString()} events found so far.`);
       } else if (progress.phase === "allowances") {
-        renderWalletApprovalMessage("Checking current allowances", `Reading current allowance values: ${progress.done} / ${progress.total}.`);
+        renderWalletApprovalMessage(`Checking current ${progress.eventLabel || "approval"} permissions`, `On-chain checks: ${progress.done} / ${progress.total}.`);
       }
     });
     renderWalletApprovalScan(scan);
