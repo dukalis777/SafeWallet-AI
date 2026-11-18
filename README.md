@@ -2,12 +2,14 @@
 
 An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 
-## Prototype v0.4.7
+## Prototype v0.5.0
 - GoPlus Security lookups for wallet address reputation and token security.
-- Automatic recent-history ERC-20 approval scan using Etherscan API V2 indexed event logs.
-- Filters `Approval(address,address,uint256)` logs by the indexed owner address.
-- Reads the current allowance for each discovered token + spender pair with read-only `eth_call` through a public RPC endpoint.
-- Flags zero, active, very large, and maximum uint256 allowances.
+- Configurable recent-history scan (50,000 / 250,000 / 500,000 / 1,000,000 blocks).
+- ERC-20 allowance discovery using indexed `Approval(address,address,uint256)` events.
+- ERC-721 per-token approval discovery using the same `Approval` event signature, distinguished by its four indexed topics, with current-state checks via `ownerOf` and `getApproved`.
+- ERC-721 / ERC-1155 operator approval discovery using `ApprovalForAll(address,address,bool)`, with current-state checks via `isApprovedForAll`.
+- Current permissions are re-read on-chain; old revoke events are not mistaken for currently active permissions.
+- Flags zero, active, very large, and maximum uint256 ERC-20 allowances.
 - Retains a manual allowance checker for one specific owner + token + spender tuple.
 - Does not connect a wallet, request signatures, send transactions, or revoke permissions.
 
@@ -33,9 +35,9 @@ Etherscan documents a free plan with 3 calls per second and up to 100,000 calls 
 ## Automatic approval scan scope
 The scan queries Etherscan API V2 for ERC-20 Approval events in the most recent 50,000 blocks, then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range using a public RPC. Historical log queries are no longer sent to public RPC providers.
 
-This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and 20 event pages. Public RPC providers can still rate-limit current-state `eth_call` requests. The extension uses one working public RPC endpoint for the latest block and current allowance reads; Etherscan is used for historical event indexing. An Etherscan free-plan key may not support every chain or every endpoint; the UI will show the provider response if a chain is unavailable.
+This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. Non-standard NFT permissions, signature-based permits, and approvals outside the selected history range are not included. The scan is capped at 500 distinct token + spender pairs and 20 event pages. Public RPC providers can still rate-limit current-state `eth_call` requests. The extension uses one working public RPC endpoint for the latest block and current allowance reads; Etherscan is used for historical event indexing. An Etherscan free-plan key may not support every chain or every endpoint; the UI will show the provider response if a chain is unavailable.
 
-A pair that currently returns zero may have been revoked or otherwise reduced to zero. The extension never changes an approval.
+ERC-721 single-token approvals are verified against current ownerOf and getApproved values. NFT operator approvals are verified with isApprovedForAll. The same ApprovalForAll event is used by ERC-721 and ERC-1155; ERC-165 interface checks are used to label recognized standards where available. A pair that currently returns zero may have been revoked or otherwise reduced to zero. The extension never changes an approval.
 
 ## Data and privacy
 When a user runs a GoPlus check, the public address is sent to GoPlus Security. During an automatic approval scan, the public wallet address and API key are sent to Etherscan API V2 to retrieve indexed logs. Current allowance calls send the token address and call data to the selected public RPC endpoint. The API key is stored locally in Chrome storage and is never written to this repository. No seed phrase or private key is requested or sent.
