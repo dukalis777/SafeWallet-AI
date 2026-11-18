@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SafeWallet AI",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "A Web3 security assistant prototype with resilient automatic ERC-20 approval scanning and RPC retry handling.",
   "host_permissions": [
     "https://api.gopluslabs.io/*",
