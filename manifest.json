@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SafeWallet AI",
-  "version": "0.4.5",
-  "description": "A Web3 security assistant prototype with a Blockscout-backed Ethereum approval scan and RPC fallbacks.",
+  "version": "0.4.6",
+  "description": "A Web3 security assistant prototype with Etherscan-indexed automatic ERC-20 approval scanning.",
   "host_permissions": [
     "https://api.gopluslabs.io/*",
     "https://ethereum-rpc.publicnode.com/*",
@@ -12,10 +12,13 @@
     "https://bsc-rpc.publicnode.com/*",
     "https://eth.llamarpc.com/*",
     "https://eth.drpc.org/*",
-    "https://eth.blockscout.com/*"
+    "https://api.etherscan.io/*"
   ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "SafeWallet AI"
-  }
+  },
+  "permissions": [
+    "storage"
+  ]
 }
