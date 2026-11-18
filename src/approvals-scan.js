@@ -1,26 +1,27 @@
 const APPROVAL_EVENT_TOPIC = "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925";
 const ERC20_APPROVAL_SCAN_WINDOW = 50000;
 const MAX_APPROVAL_PAIRS = 500;
-const LOG_CHUNK_SIZE = 5000;
+const LOG_CHUNK_SIZE = 1000;
+const MIN_LOG_CHUNK_SIZE = 32;
 const MAX_LOGS_PER_CHUNK = 9000;
 
 const APPROVAL_SCAN_NETWORKS = {
   ethereum: {
     label: "Ethereum",
     chainId: 1,
-    endpoints: ["https://ethereum-rpc.publicnode.com", "https://cloudflare-eth.com"],
+    endpoints: ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com"],
     explorer: "https://etherscan.io"
   },
   base: {
     label: "Base",
     chainId: 8453,
-    endpoints: ["https://mainnet.base.org", "https://base-rpc.publicnode.com"],
+    endpoints: ["https://base-rpc.publicnode.com", "https://mainnet.base.org"],
     explorer: "https://basescan.org"
   },
   bnb: {
     label: "BNB Chain",
     chainId: 56,
-    endpoints: ["https://bsc-dataseed.bnbchain.org", "https://bsc-rpc.publicnode.com"],
+    endpoints: ["https://bsc-rpc.publicnode.com", "https://bsc-dataseed.bnbchain.org"],
     explorer: "https://bscscan.com"
   }
 };
@@ -52,10 +53,15 @@ async function approvalRpc(endpoint, method, params) {
 function isLogRangeError(error) {
   const message = String(error && error.message || "").toLowerCase();
   return error?.code === -32005 ||
+    error?.code === -32046 ||
+    message.includes("cannot fulfill request") ||
     message.includes("too many") ||
     message.includes("range") ||
     message.includes("query timeout") ||
     message.includes("response size") ||
+    message.includes("response limit") ||
+    message.includes("result limit") ||
+    message.includes("limit exceeded") ||
     message.includes("more than") ||
     message.includes("block range");
 }
@@ -79,7 +85,7 @@ async function getApprovalLogs(endpoint, fromBlock, toBlock, ownerTopic, depth =
     throw Object.assign(new Error("Too many logs in one block range"), { code: -32005 });
   } catch (error) {
     const width = toBlock - fromBlock + 1n;
-    if (!isLogRangeError(error) || width <= 128n || depth >= 12) throw error;
+    if (!isLogRangeError(error) || width <= BigInt(MIN_LOG_CHUNK_SIZE) || depth >= 16) throw error;
 
     const midpoint = fromBlock + width / 2n - 1n;
     const left = await getApprovalLogs(endpoint, fromBlock, midpoint, ownerTopic, depth + 1);
@@ -171,6 +177,16 @@ async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {
       if (chainId !== network.chainId) throw new Error("RPC endpoint returned the wrong network.");
 
       const latestBlock = BigInt(await approvalRpc(endpoint, "eth_blockNumber", []));
+
+      // Probe eth_getLogs at a single block first. This distinguishes a provider
+      // that refuses the method from one that only rejects wider historical ranges.
+      const probe = await approvalRpc(endpoint, "eth_getLogs", [{
+        fromBlock: toHexBlock(latestBlock),
+        toBlock: toHexBlock(latestBlock),
+        topics: [APPROVAL_EVENT_TOPIC, ownerTopic]
+      }]);
+      if (!Array.isArray(probe)) throw new Error("RPC eth_getLogs probe returned an invalid result.");
+
       const fromBlock = latestBlock >= BigInt(ERC20_APPROVAL_SCAN_WINDOW - 1)
         ? latestBlock - BigInt(ERC20_APPROVAL_SCAN_WINDOW - 1)
         : 0n;
@@ -266,11 +282,16 @@ async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {
         rpcHost: new URL(endpoint).host
       };
     } catch (error) {
-      lastError = error;
+      const host = (() => {
+        try { return new URL(endpoint).host; } catch { return "RPC provider"; }
+      })();
+      lastError = new Error(`${host}: ${error && error.message ? error.message : "request failed"}`);
     }
   }
 
-  throw new Error(lastError?.message || "No RPC endpoint was available.");
+  throw new Error(lastError
+    ? `All configured RPC providers failed to scan Approval events. Last error: ${lastError.message}. Try again later; public RPC services can restrict historical log queries.`
+    : "No RPC endpoint was available.");
 }
 
 window.SafeWalletApprovalScan = {
