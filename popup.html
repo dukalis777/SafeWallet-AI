@@ -60,11 +60,18 @@
       <form id="wallet-approval-form">
         <label for="scan-owner-address">WALLET ADDRESS</label>
         <input id="scan-owner-address" type="text" placeholder="0x..." spellcheck="false" autocomplete="off" required>
-        <p class="scan-window-note">Uses indexed Approval events from the most recent 50,000 blocks, then reads each discovered allowance on-chain.</p>
+        <label for="approval-scan-range">HISTORY RANGE</label>
+        <select id="approval-scan-range">
+          <option value="50000">50,000 blocks</option>
+          <option value="250000" selected>250,000 blocks (recommended)</option>
+          <option value="500000">500,000 blocks</option>
+          <option value="1000000">1,000,000 blocks (deep scan)</option>
+        </select>
+        <p class="scan-window-note">Searches ERC-20 / ERC-721 token approvals and ERC-721 / ERC-1155 operator approvals in the selected block range, then checks current on-chain permission state.</p>
         <button type="submit" id="wallet-approval-button">Scan wallet approvals <span>→</span></button>
       </form>
       <section id="wallet-approval-result" class="result hidden" aria-live="polite"></section>
-      <p class="allowance-disclaimer">Recent-history scan only, not a complete lifetime history. Older approvals outside the block range, NFTs, and some signature-based permissions may be missed. No transaction is sent and no permission is changed.</p>
+      <p class="allowance-disclaimer">This is a bounded history scan, not a complete lifetime history. Events outside the selected range, NFT approvals without standard events, and signature-based permissions may be missed. No transaction is sent and no permission is changed.</p>
     </section>
 
     <section class="allowance-panel">
@@ -91,7 +98,7 @@
     <footer>
       <p><strong>Privacy:</strong> Public addresses are sent to GoPlus Security, Etherscan API, and/or the selected public RPC provider when you run checks. Your Etherscan API key is stored locally in Chrome and sent to Etherscan for indexed queries. Never enter a seed phrase or private key.</p>
       <p><strong>Prototype notice:</strong> Results are risk signals, not a guarantee of safety. Supra checks, transaction simulation, AI analysis, and wallet-signing protection are not implemented yet.</p>
-      <span>SAFEWALLET AI · PROTOTYPE 0.4.7</span>
+      <span>SAFEWALLET AI · PROTOTYPE 0.5.0</span>
     </footer>
   </main>
   <script src="src/goplus.js"></script>
