@@ -2,13 +2,14 @@
 
 An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 
-## Prototype v0.3
-- Chrome / Chromium extension popup.
+## Prototype v0.4
 - GoPlus Security lookups for wallet address reputation and token security.
-- Read-only ERC-20 allowance checker for one manually supplied wallet + token + spender tuple.
-- Uses `eth_call` against public Ethereum, Base, or BNB Chain RPC endpoints.
-- Displays zero, active, very large, or maximum uint256 allowances.
-- No wallet connection, seed phrase, private key, transaction signing, or revocation.
+- Automatic recent-history ERC-20 approval scan for a public wallet address on Ethereum, Base, and BNB Chain.
+- Filters ERC-20 `Approval(address,address,uint256)` logs by the indexed owner address.
+- Reads the current allowance for each discovered token + spender pair with read-only `eth_call`.
+- Flags zero, active, very large, and maximum uint256 allowances.
+- Retains a manual allowance checker for one specific owner + token + spender tuple.
+- Does not connect a wallet, request signatures, send transactions, or revoke permissions.
 
 ## Load locally in Chrome
 1. Download or clone this repository.
@@ -17,20 +18,23 @@ An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 4. Select **Load unpacked**.
 5. Choose the project folder containing `manifest.json`.
 
-## Data and privacy
-When a user runs a GoPlus check, the public address is sent to GoPlus Security. When a user checks an allowance, the wallet, token, and spender addresses are sent to the selected public RPC endpoint. The extension never asks for or transmits seed phrases or private keys.
+## Automatic approval scan scope
+The automatic scan searches the most recent 50,000 blocks for ERC-20 Approval events. It then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range.
 
-Public RPC endpoints may be rate-limited or temporarily unavailable. Endpoints are configured with a fallback where available.
+This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and reports when the cap is reached. Public RPC providers can rate-limit requests or limit log queries.
+
+A pair that currently returns zero may have been revoked or otherwise reduced to zero. The extension never changes an approval.
+
+## Data and privacy
+When a user runs a GoPlus check, the public address is sent to GoPlus Security. During automatic approval scanning, the public wallet address is used in a read-only `eth_getLogs` query to the selected public RPC provider; token contract calls use `eth_call`. No seed phrase or private key is requested or sent.
 
 ## Important limitations
-This is an experimental prototype, not a security product or audit. The allowance checker reads only the exact owner + token + spender pair entered by the user. It does not discover every token approval in a wallet, revoke approvals, simulate transactions, or intercept wallet-signing requests. It currently supports EVM ERC-20 allowance calls on Ethereum, Base, and BNB Chain. Supra-specific allowance checks are not implemented.
-
-A zero allowance for one pair does not mean the wallet has no other approvals. A non-zero or unlimited allowance is not automatically malicious; review whether the spender is trusted and whether the approval is necessary.
+This is an experimental prototype, not a security product or audit. A zero result within the scanned range does not prove the wallet has no older approvals. A non-zero or unlimited allowance is not automatically malicious; review whether the spender is trusted and whether the approval is necessary.
 
 Never rely on this prototype alone to approve transactions or protect funds.
 
 ## Planned development
-1. Integrate authenticated wallet-wide approval-management data without embedding secrets in the extension.
-2. Add transaction simulation and approval risk analysis.
-3. Explore Supra-specific data and integrations.
-4. Design a safe pre-signing browser workflow.
+1. Add NFT operator-approval discovery.
+2. Integrate a complete indexed approvals provider for lifetime wallet-wide coverage, without embedding API secrets in the extension.
+3. Add transaction simulation and approval risk analysis.
+4. Explore Supra-specific data and integrations.
