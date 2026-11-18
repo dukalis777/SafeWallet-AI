@@ -3,13 +3,13 @@ const ERC20_APPROVAL_SCAN_WINDOW = 50000;
 const MAX_APPROVAL_PAIRS = 500;
 const LOG_CHUNK_SIZE = 1000;
 const MIN_LOG_CHUNK_SIZE = 32;
-const MAX_LOGS_PER_CHUNK = 9000;
+const MAX_LOGS_PER_CHUNK = 999;
 
 const APPROVAL_SCAN_NETWORKS = {
   ethereum: {
     label: "Ethereum",
     chainId: 1,
-    endpoints: ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://eth.drpc.org"],
+    endpoints: ["https://eth.blockscout.com/api/eth-rpc", "https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://eth.drpc.org"],
     explorer: "https://etherscan.io"
   },
   base: {
