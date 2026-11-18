@@ -1,5 +1,4 @@
 const ETHERSCAN_API_BASE = "https://api.etherscan.io/v2/api";
-const ETHERSCAN_APPROVAL_EVENT_TOPIC = "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925";
 const ETHERSCAN_PAGE_SIZE = 1000;
 const ETHERSCAN_MAX_PAGES = 20;
 const ETHERSCAN_MIN_PAGE_DELAY_MS = 400;
@@ -58,9 +57,12 @@ async function rateLimitedEtherscanRequest(params) {
   }
 }
 
-async function getIndexedApprovalLogs(chainId, fromBlock, toBlock, ownerTopic, apiKey, onProgress = () => {}) {
+async function getIndexedEventLogs(chainId, fromBlock, toBlock, ownerTopic, apiKey, eventTopic, eventLabel, onProgress = () => {}) {
   if (!apiKey || !apiKey.trim()) {
     throw new Error("Add your free Etherscan API key in the scanner settings first.");
+  }
+  if (!/^0x[a-fA-F0-9]{64}$/.test(eventTopic)) {
+    throw new Error("Invalid event signature filter.");
   }
 
   const allLogs = [];
@@ -73,7 +75,7 @@ async function getIndexedApprovalLogs(chainId, fromBlock, toBlock, ownerTopic, a
       action: "getLogs",
       fromBlock: fromBlock.toString(),
       toBlock: toBlock.toString(),
-      topic0: ETHERSCAN_APPROVAL_EVENT_TOPIC,
+      topic0: eventTopic,
       topic0_1_opr: "and",
       topic1: ownerTopic,
       page,
@@ -84,6 +86,7 @@ async function getIndexedApprovalLogs(chainId, fromBlock, toBlock, ownerTopic, a
     allLogs.push(...logs);
     onProgress({
       phase: "logs",
+      eventLabel,
       page,
       maxPages: ETHERSCAN_MAX_PAGES,
       eventsFound: allLogs.length
@@ -96,4 +99,4 @@ async function getIndexedApprovalLogs(chainId, fromBlock, toBlock, ownerTopic, a
   return { logs: allLogs, truncated };
 }
 
-window.SafeWalletEtherscan = { getIndexedApprovalLogs };
+window.SafeWalletEtherscan = { getIndexedEventLogs };
