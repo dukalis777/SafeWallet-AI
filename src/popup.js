@@ -176,3 +176,97 @@ form.addEventListener("submit", async event => {
     scanButton.innerHTML = 'Run security checks <span>→</span>';
   }
 });
+
+const allowanceForm = document.getElementById("allowance-form");
+const ownerInput = document.getElementById("owner-address");
+const tokenInput = document.getElementById("token-address");
+const spenderInput = document.getElementById("spender-address");
+const allowanceButton = document.getElementById("allowance-button");
+const allowanceResult = document.getElementById("allowance-result");
+
+function renderAllowanceMessage(title, message, tone = "unknown") {
+  allowanceResult.replaceChildren();
+  allowanceResult.classList.remove("hidden");
+  const card = document.createElement("div");
+  card.className = `summary ${tone}`;
+  addText(card, "h3", title);
+  addText(card, "p", message);
+  allowanceResult.appendChild(card);
+}
+
+function renderAllowance(data) {
+  allowanceResult.replaceChildren();
+  allowanceResult.classList.remove("hidden");
+
+  const tone = data.status === "zero" ? "caution" : data.status === "unlimited" || data.status === "very-large" ? "danger" : "warning";
+  const title = data.status === "zero"
+    ? "No allowance for this pair"
+    : data.status === "unlimited"
+      ? "Unlimited token allowance"
+      : data.status === "very-large"
+        ? "Very large token allowance"
+        : "Active token allowance";
+
+  const card = document.createElement("div");
+  card.className = `summary ${tone}`;
+  addText(card, "span", "ON-CHAIN READ", "tag");
+  addText(card, "h3", title);
+  addText(card, "p", `${data.network} · Chain ID ${data.chainId}`);
+  allowanceResult.appendChild(card);
+
+  const details = document.createElement("div");
+  details.className = "check-status";
+  addText(details, "p", `Allowance: ${data.formattedAllowance}`);
+  addText(details, "p", `Wallet: ${data.ownerAddress}`);
+  addText(details, "p", `Token: ${data.tokenAddress}`);
+  addText(details, "p", `Spender: ${data.spenderAddress}`);
+  addText(details, "p", `RPC: ${data.rpcHost}`);
+  allowanceResult.appendChild(details);
+
+  const explanation = data.status === "zero"
+    ? "The token contract reports zero allowance for this exact wallet and spender pair. This does not check other tokens or other spenders."
+    : data.status === "unlimited"
+      ? "The token contract reports the maximum uint256 allowance. The spender may transfer any amount of this token from the wallet, subject to the token contract's rules. Review whether this approval is still needed."
+      : data.status === "very-large"
+        ? "The allowance is extremely large. Confirm that the spender is trusted and that this level of access is necessary."
+        : "A non-zero allowance is active for this exact spender. Compare it with the amount you intended to approve.";
+  addText(allowanceResult, "p", explanation, "notice");
+  addText(allowanceResult, "p", "Read-only eth_call. No transaction was sent and no approval was changed.", "provider");
+}
+
+allowanceForm.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const networkKey = networkInput.value;
+  const owner = ownerInput.value.trim();
+  const token = tokenInput.value.trim();
+  const spender = spenderInput.value.trim();
+
+  if (networkKey === "supra") {
+    renderAllowanceMessage("Supra allowance check is not implemented", "This checker currently supports EVM ERC-20 allowance reads on Ethereum, Base, and BNB Chain.");
+    return;
+  }
+
+  if (![owner, token, spender].every(window.SafeWalletAllowance.isValidEvmAddress)) {
+    renderAllowanceMessage("Check the three addresses", "Enter valid EVM addresses for the wallet, token contract, and spender.", "warning");
+    return;
+  }
+
+  allowanceButton.disabled = true;
+  allowanceButton.textContent = "Reading from blockchain…";
+  renderAllowanceMessage("Checking allowance", "Performing a read-only allowance(owner, spender) call.");
+
+  try {
+    const data = await window.SafeWalletAllowance.checkAllowance(networkKey, owner, token, spender);
+    renderAllowance(data);
+  } catch (error) {
+    renderAllowanceMessage(
+      "Allowance check unavailable",
+      error && error.message ? error.message : "Could not read this token's allowance. Check the network and addresses, then try again.",
+      "warning"
+    );
+  } finally {
+    allowanceButton.disabled = false;
+    allowanceButton.innerHTML = 'Check allowance <span>→</span>';
+  }
+});
