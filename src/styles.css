@@ -78,3 +78,25 @@ footer span { color: #596783; font-size: 8px; letter-spacing: 1.2px; }
   font-size: 9px;
   line-height: 1.45;
 }
+
+.allowance-panel {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #2a3856;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #101a30, #0c1324);
+}
+.section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.mini-shield {
+  display: grid; place-items: center; flex: 0 0 32px; height: 32px;
+  border-radius: 10px; color: #c4b5fd; background: #211b45; border: 1px solid #51418c; font-weight: 800;
+}
+.section-heading h3 { margin: 0; font-size: 13px; color: #edf2ff; }
+.section-heading p { margin: 4px 0 0; color: #8996b5; font-size: 10px; line-height: 1.4; }
+.allowance-panel input {
+  display: block; width: 100%; min-width: 0; padding: 11px 12px;
+  border: 1px solid #293653; border-radius: 9px; background: #0c1324;
+  color: #e9edff; outline: none; font: inherit; font-size: 11px;
+}
+.allowance-panel input:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px #8b5cf622; }
+.allowance-disclaimer { color: #7f8ba7; font-size: 9px; line-height: 1.5; margin: 11px 0 0; }
