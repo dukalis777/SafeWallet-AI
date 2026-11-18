@@ -39,6 +39,24 @@
 
     <section id="result" class="result hidden" aria-live="polite"></section>
 
+    <section class="allowance-panel auto-scan-panel">
+      <div class="section-heading">
+        <span class="mini-shield">⌕</span>
+        <div>
+          <h3>Automatic ERC-20 approval scan</h3>
+          <p>Enter only your public wallet address. No wallet connection needed.</p>
+        </div>
+      </div>
+      <form id="wallet-approval-form">
+        <label for="scan-owner-address">WALLET ADDRESS</label>
+        <input id="scan-owner-address" type="text" placeholder="0x..." spellcheck="false" autocomplete="off" required>
+        <p class="scan-window-note">Scans Approval events from the most recent 50,000 blocks, then reads each discovered allowance on-chain.</p>
+        <button type="submit" id="wallet-approval-button">Scan wallet approvals <span>→</span></button>
+      </form>
+      <section id="wallet-approval-result" class="result hidden" aria-live="polite"></section>
+      <p class="allowance-disclaimer">Recent-history scan only, not a complete lifetime history. Older approvals outside the block range, NFTs, and some signature-based permissions may be missed. No transaction is sent and no permission is changed.</p>
+    </section>
+
     <section class="allowance-panel">
       <div class="section-heading">
         <span class="mini-shield">✓</span>
@@ -63,11 +81,12 @@
     <footer>
       <p><strong>Privacy:</strong> When you run checks, public addresses are sent to GoPlus Security and/or the selected public RPC provider. Never enter a seed phrase or private key.</p>
       <p><strong>Prototype notice:</strong> Results are risk signals, not a guarantee of safety. Supra checks, transaction simulation, AI analysis, and wallet-signing protection are not implemented yet.</p>
-      <span>SAFEWALLET AI · PROTOTYPE 0.3</span>
+      <span>SAFEWALLET AI · PROTOTYPE 0.4</span>
     </footer>
   </main>
   <script src="src/goplus.js"></script>
   <script src="src/allowance.js"></script>
+  <script src="src/approvals-scan.js"></script>
   <script src="src/popup.js"></script>
 </body>
 </html>
