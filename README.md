@@ -2,7 +2,7 @@
 
 An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 
-## Prototype v0.4
+## Prototype v0.4.1
 - GoPlus Security lookups for wallet address reputation and token security.
 - Automatic recent-history ERC-20 approval scan for a public wallet address on Ethereum, Base, and BNB Chain.
 - Filters ERC-20 `Approval(address,address,uint256)` logs by the indexed owner address.
@@ -19,9 +19,9 @@ An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 5. Choose the project folder containing `manifest.json`.
 
 ## Automatic approval scan scope
-The automatic scan searches the most recent 50,000 blocks for ERC-20 Approval events. It then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range.
+The automatic scan searches the most recent 50,000 blocks for ERC-20 Approval events, using 1,000-block requests and adaptive smaller ranges when an RPC provider rejects a query. It probes `eth_getLogs` on a single block to skip providers that refuse the method. It then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range.
 
-This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and reports when the cap is reached. Public RPC providers can rate-limit requests or limit log queries.
+This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and reports when the cap is reached. Public RPC providers can rate-limit requests or limit log queries. Ethereum uses PublicNode with LlamaRPC as a fallback; Base and BNB Chain use PublicNode and their chain-provided public endpoints.
 
 A pair that currently returns zero may have been revoked or otherwise reduced to zero. The extension never changes an approval.
 
