@@ -276,6 +276,54 @@ const walletApprovalForm = document.getElementById("wallet-approval-form");
 const scanOwnerInput = document.getElementById("scan-owner-address");
 const walletApprovalButton = document.getElementById("wallet-approval-button");
 const walletApprovalResult = document.getElementById("wallet-approval-result");
+const etherscanApiKeyInput = document.getElementById("etherscan-api-key");
+const saveEtherscanKeyButton = document.getElementById("save-etherscan-key");
+const clearEtherscanKeyButton = document.getElementById("clear-etherscan-key");
+const etherscanKeyStatus = document.getElementById("etherscan-key-status");
+
+function setEtherscanKeyStatus(message, isError = false) {
+  etherscanKeyStatus.textContent = message;
+  etherscanKeyStatus.classList.toggle("error-text", isError);
+}
+
+function getLocalEtherscanKey() {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["etherscanApiKey"], data => {
+      const error = chrome.runtime && chrome.runtime.lastError;
+      if (error) reject(new Error(error.message));
+      else resolve(data.etherscanApiKey || "");
+    });
+  });
+}
+
+saveEtherscanKeyButton.addEventListener("click", () => {
+  const apiKey = etherscanApiKeyInput.value.trim();
+  if (!apiKey) {
+    setEtherscanKeyStatus("Paste an API key before saving.", true);
+    return;
+  }
+
+  chrome.storage.local.set({ etherscanApiKey: apiKey }, () => {
+    const error = chrome.runtime && chrome.runtime.lastError;
+    if (error) {
+      setEtherscanKeyStatus("Could not save the key: " + error.message, true);
+      return;
+    }
+    etherscanApiKeyInput.value = "";
+    setEtherscanKeyStatus("API key saved locally in this Chrome profile.");
+  });
+});
+
+clearEtherscanKeyButton.addEventListener("click", () => {
+  chrome.storage.local.remove(["etherscanApiKey"], () => {
+    const error = chrome.runtime && chrome.runtime.lastError;
+    setEtherscanKeyStatus(error ? "Could not remove the key: " + error.message : "Saved Etherscan API key removed.", Boolean(error));
+  });
+});
+
+getLocalEtherscanKey()
+  .then(key => setEtherscanKeyStatus(key ? "An Etherscan API key is saved locally." : "No API key saved yet. Create a free key and save it here."))
+  .catch(error => setEtherscanKeyStatus("Could not read local settings: " + error.message, true));
 
 function renderWalletApprovalMessage(title, message, tone = "unknown") {
   walletApprovalResult.replaceChildren();
@@ -344,8 +392,11 @@ function renderWalletApprovalScan(scan) {
   addText(stats, "p", `Pairs currently at zero: ${scan.inactivePairs}`);
   addText(stats, "p", `Active allowances: ${scan.activeApprovals.length}`);
   if (scan.failedPairs) addText(stats, "p", `Pairs that could not be read: ${scan.failedPairs}`, "error-text");
-  if (scan.truncated) {
+  if (scan.truncatedPairs) {
     addText(stats, "p", `The scan found more than ${scan.maxPairs} unique pairs. Only the ${scan.maxPairs} most recently active pairs were checked.`, "error-text");
+  }
+  if (scan.truncatedLogs) {
+    addText(stats, "p", "The Etherscan page limit was reached. Some older or additional Approval events in this block range may be missing.", "error-text");
   }
   walletApprovalResult.appendChild(stats);
 
@@ -386,7 +437,7 @@ function renderWalletApprovalScan(scan) {
   note.className = "notice";
   note.textContent = "Coverage is limited to the displayed recent block range. An empty result does not prove the wallet has no older active approvals. ERC-721 / ERC-1155 approvals and signature-only permissions are not included.";
   walletApprovalResult.appendChild(note);
-  addText(walletApprovalResult, "p", `Read-only scan via ${scan.rpcHost}. No transactions were sent.`, "provider");
+  addText(walletApprovalResult, "p", `Approval events indexed by ${scan.indexer}; current allowances read via ${scan.rpcHost}. No transactions were sent.`, "provider");
 }
 
 walletApprovalForm.addEventListener("submit", async event => {
@@ -404,14 +455,27 @@ walletApprovalForm.addEventListener("submit", async event => {
     return;
   }
 
+  let apiKey;
+  try {
+    apiKey = await getLocalEtherscanKey();
+  } catch (error) {
+    renderWalletApprovalMessage("Could not read API key settings", error.message, "warning");
+    return;
+  }
+
+  if (!apiKey) {
+    renderWalletApprovalMessage("Etherscan API key required", "Create a free key using the link above, save it locally, then run the wallet scan.", "warning");
+    return;
+  }
+
   walletApprovalButton.disabled = true;
   walletApprovalButton.textContent = "Scanning recent approvals…";
-  renderWalletApprovalMessage("Starting wallet scan", "Reading recent Approval events from public blockchain RPC endpoints.");
+  renderWalletApprovalMessage("Starting wallet scan", "Getting the latest block, then requesting indexed Approval events from Etherscan.");
 
   try {
-    const scan = await window.SafeWalletApprovalScan.scanErc20Approvals(networkKey, owner, progress => {
+    const scan = await window.SafeWalletApprovalScan.scanErc20Approvals(networkKey, owner, apiKey, progress => {
       if (progress.phase === "logs") {
-        renderWalletApprovalMessage("Scanning Approval events", `Reading block batches: ${progress.done} / ${progress.total}. This may take a little while on public RPC endpoints.`);
+        renderWalletApprovalMessage("Reading indexed Approval events", `Etherscan page ${progress.page} / ${progress.maxPages}; ${progress.eventsFound.toLocaleString()} events found so far.`);
       } else if (progress.phase === "allowances") {
         renderWalletApprovalMessage("Checking current allowances", `Reading current allowance values: ${progress.done} / ${progress.total}.`);
       }
