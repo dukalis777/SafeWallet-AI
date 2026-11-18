@@ -130,3 +130,10 @@ footer span { color: #596783; font-size: 8px; letter-spacing: 1.2px; }
   background: #18243a; color: #bdc9e2; border: 1px solid #354665;
 }
 .key-status { margin: 8px 0 0; color: #8c9bbb; font-size: 9px; line-height: 1.45; overflow-wrap: anywhere; }
+
+#approval-scan-range {
+  display: block; width: 100%; padding: 11px 12px;
+  border: 1px solid #293653; border-radius: 9px; background: #0c1324;
+  color: #e9edff; outline: none; font: inherit; font-size: 11px;
+}
+#approval-scan-range:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px #8b5cf622; }
