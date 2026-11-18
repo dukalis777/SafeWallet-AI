@@ -100,3 +100,17 @@ footer span { color: #596783; font-size: 8px; letter-spacing: 1.2px; }
 }
 .allowance-panel input:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px #8b5cf622; }
 .allowance-disclaimer { color: #7f8ba7; font-size: 9px; line-height: 1.5; margin: 11px 0 0; }
+
+.scan-window-note {
+  color: #8492b0; font-size: 9px; line-height: 1.45; margin: 8px 0 0;
+}
+.approval-row { align-items: flex-start; }
+.approval-status {
+  display: inline-block; margin-bottom: 5px; padding: 3px 6px;
+  border-radius: 20px; font-size: 8px; letter-spacing: .7px;
+}
+.approval-risk { background: #4a1c2a; color: #fda4af; }
+.approval-active { background: #3c2c16; color: #fcd34d; }
+.approval-amount { display: block; margin: 1px 0 6px; font-size: 10px; color: #e1e8f8; overflow-wrap: anywhere; }
+.approval-links { display: flex; gap: 10px; margin-top: 4px; }
+.explorer-link { color: #a5b4fc; font-size: 9px; text-decoration: underline; }
