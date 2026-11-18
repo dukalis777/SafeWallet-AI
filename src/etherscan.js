@@ -1,4 +1,5 @@
 const ETHERSCAN_API_BASE = "https://api.etherscan.io/v2/api";
+const ETHERSCAN_APPROVAL_EVENT_TOPIC = "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925";
 const ETHERSCAN_PAGE_SIZE = 1000;
 const ETHERSCAN_MAX_PAGES = 20;
 const ETHERSCAN_MIN_PAGE_DELAY_MS = 400;
@@ -72,7 +73,7 @@ async function getIndexedApprovalLogs(chainId, fromBlock, toBlock, ownerTopic, a
       action: "getLogs",
       fromBlock: fromBlock.toString(),
       toBlock: toBlock.toString(),
-      topic0: APPROVAL_EVENT_TOPIC,
+      topic0: ETHERSCAN_APPROVAL_EVENT_TOPIC,
       topic0_1_opr: "and",
       topic1: ownerTopic,
       page,
