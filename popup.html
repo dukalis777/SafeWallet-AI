@@ -47,10 +47,20 @@
           <p>Enter only your public wallet address. No wallet connection needed.</p>
         </div>
       </div>
+      <div class="indexer-key-box">
+        <label for="etherscan-api-key">ETHERSCAN API KEY</label>
+        <input id="etherscan-api-key" type="password" placeholder="Paste your free Etherscan API key" spellcheck="false" autocomplete="off">
+        <div class="key-actions">
+          <button type="button" id="save-etherscan-key">Save key locally</button>
+          <button type="button" id="clear-etherscan-key" class="secondary-button">Remove key</button>
+        </div>
+        <p id="etherscan-key-status" class="key-status">Required for historical Approval event indexing. The key is stored in this Chrome profile only.</p>
+        <a class="explorer-link" href="https://etherscan.io/myapikey" target="_blank" rel="noopener noreferrer">Get a free Etherscan API key</a>
+      </div>
       <form id="wallet-approval-form">
         <label for="scan-owner-address">WALLET ADDRESS</label>
         <input id="scan-owner-address" type="text" placeholder="0x..." spellcheck="false" autocomplete="off" required>
-        <p class="scan-window-note">Scans Approval events from the most recent 50,000 blocks, then reads each discovered allowance on-chain.</p>
+        <p class="scan-window-note">Uses indexed Approval events from the most recent 50,000 blocks, then reads each discovered allowance on-chain.</p>
         <button type="submit" id="wallet-approval-button">Scan wallet approvals <span>→</span></button>
       </form>
       <section id="wallet-approval-result" class="result hidden" aria-live="polite"></section>
@@ -79,13 +89,14 @@
     </section>
 
     <footer>
-      <p><strong>Privacy:</strong> When you run checks, public addresses are sent to GoPlus Security and/or the selected public RPC provider. Never enter a seed phrase or private key.</p>
+      <p><strong>Privacy:</strong> Public addresses are sent to GoPlus Security, Etherscan API, and/or the selected public RPC provider when you run checks. Your Etherscan API key is stored locally in Chrome and sent to Etherscan for indexed queries. Never enter a seed phrase or private key.</p>
       <p><strong>Prototype notice:</strong> Results are risk signals, not a guarantee of safety. Supra checks, transaction simulation, AI analysis, and wallet-signing protection are not implemented yet.</p>
-      <span>SAFEWALLET AI · PROTOTYPE 0.4.5</span>
+      <span>SAFEWALLET AI · PROTOTYPE 0.4.6</span>
     </footer>
   </main>
   <script src="src/goplus.js"></script>
   <script src="src/allowance.js"></script>
+  <script src="src/etherscan.js"></script>
   <script src="src/approvals-scan.js"></script>
   <script src="src/popup.js"></script>
 </body>
