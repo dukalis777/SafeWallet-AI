@@ -1,11 +1,16 @@
 {
   "manifest_version": 3,
   "name": "SafeWallet AI",
-  "version": "0.2.0",
-  "description": "A Web3 security assistant prototype with live address and token risk lookups.",
-  "permissions": [],
+  "version": "0.3.0",
+  "description": "A Web3 security assistant prototype with live risk lookups and read-only token allowance checks.",
   "host_permissions": [
-    "https://api.gopluslabs.io/*"
+    "https://api.gopluslabs.io/*",
+    "https://ethereum-rpc.publicnode.com/*",
+    "https://cloudflare-eth.com/*",
+    "https://mainnet.base.org/*",
+    "https://base-rpc.publicnode.com/*",
+    "https://bsc-dataseed.bnbchain.org/*",
+    "https://bsc-rpc.publicnode.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
