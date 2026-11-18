@@ -3,7 +3,7 @@ const ERC20_APPROVAL_SCAN_WINDOW = 50000;
 const MAX_APPROVAL_PAIRS = 500;
 const LOG_CHUNK_SIZE = 1000;
 const MIN_LOG_CHUNK_SIZE = 32;
-const MAX_LOGS_PER_CHUNK = 999;
+const MAX_LOGS_PER_CHUNK = 1000;
 
 const APPROVAL_SCAN_NETWORKS = {
   ethereum: {
@@ -95,10 +95,13 @@ async function getApprovalLogs(endpoint, fromBlock, toBlock, ownerTopic, depth =
     }]);
 
     if (!Array.isArray(logs)) throw new Error("RPC returned an invalid log list");
-    if (logs.length < MAX_LOGS_PER_CHUNK || fromBlock === toBlock) return logs;
+    if (logs.length < MAX_LOGS_PER_CHUNK) return logs;
+    if (fromBlock === toBlock) {
+      throw new Error("The RPC returned its 1,000-log result cap for a single block. This block may be truncated, so the scan cannot guarantee complete coverage.");
+    }
 
-    // A response close to a provider result cap may be truncated or fail at a wider range.
-    throw Object.assign(new Error("Too many logs in one block range"), { code: -32005 });
+    // Blockscout documents a 1,000-log cap. Split at the cap to avoid trusting a capped response.
+    throw Object.assign(new Error("RPC reached the 1,000-log result cap in this block range"), { code: -32005 });
   } catch (error) {
     const width = toBlock - fromBlock + 1n;
     if (!isLogRangeError(error) || width <= BigInt(MIN_LOG_CHUNK_SIZE) || depth >= 16) throw error;
