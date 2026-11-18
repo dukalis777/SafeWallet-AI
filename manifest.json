@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SafeWallet AI",
-  "version": "0.4.7",
-  "description": "A Web3 security assistant prototype with Etherscan-indexed automatic ERC-20 approval scans and local API key storage.",
+  "version": "0.5.0",
+  "description": "A Web3 security assistant prototype with configurable ERC-20, ERC-721, and ERC-1155 approval scanning.",
   "host_permissions": [
     "https://api.gopluslabs.io/*",
     "https://ethereum-rpc.publicnode.com/*",
