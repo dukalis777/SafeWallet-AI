@@ -2,14 +2,26 @@
 
 An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 
-## Prototype v0.4.5
+## Prototype v0.4.6
 - GoPlus Security lookups for wallet address reputation and token security.
-- Automatic recent-history ERC-20 approval scan for a public wallet address on Ethereum, Base, and BNB Chain.
-- Filters ERC-20 `Approval(address,address,uint256)` logs by the indexed owner address.
-- Reads the current allowance for each discovered token + spender pair with read-only `eth_call`.
+- Automatic recent-history ERC-20 approval scan using Etherscan API V2 indexed event logs.
+- Filters `Approval(address,address,uint256)` logs by the indexed owner address.
+- Reads the current allowance for each discovered token + spender pair with read-only `eth_call` through a public RPC endpoint.
 - Flags zero, active, very large, and maximum uint256 allowances.
 - Retains a manual allowance checker for one specific owner + token + spender tuple.
 - Does not connect a wallet, request signatures, send transactions, or revoke permissions.
+
+## Etherscan API key setup
+1. Create a free Etherscan account and API key at https://etherscan.io/myapikey.
+2. Open the SafeWallet AI extension.
+3. Under **Automatic ERC-20 approval scan**, paste the key into the Etherscan API key field and choose **Save key locally**.
+4. The key is stored in `chrome.storage.local` in that browser profile; it is not included in this GitHub repository.
+5. The key is sent to Etherscan API V2 when the extension requests indexed logs.
+
+Etherscan documents a free plan with 3 calls per second and up to 100,000 calls per day; free access is limited to selected chains and requires attribution. The Logs API returns up to 1,000 records per request, so the extension paginates results and caps a single scan at 20 pages (20,000 events). If the page cap is reached, the result is marked as incomplete. See:
+- https://etherscan.io/api
+- https://api.etherscan.io/apis
+- https://info.etherscan.com/api-return-errors/
 
 ## Load locally in Chrome
 1. Download or clone this repository.
@@ -19,14 +31,14 @@ An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 5. Choose the project folder containing `manifest.json`.
 
 ## Automatic approval scan scope
-The automatic scan searches the most recent 50,000 blocks for ERC-20 Approval events, using 1,000-block requests, treating a 1,000-log response as capped, and adaptively splitting into smaller ranges when an RPC provider rejects a query, including HTTP 400/413 range errors. It probes `eth_getLogs` on a single block to skip providers that refuse the method. It then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range.
+The scan searches the most recent 50,000 blocks for ERC-20 Approval events. It then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range.
 
-This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and reports when the cap is reached. Blockscout documents a maximum of 1,000 logs per `eth_getLogs` request; the scanner splits ranges when a response reaches that cap. Public RPC providers can still rate-limit requests or limit log queries. The scanner first probes `eth_getLogs` over a single block and skips an endpoint if it refuses the method; it preserves the HTTP/RPC error response body and reports failures from all configured endpoints; wider ranges are split down to 32-block segments when the provider reports a range/result-size limit. Ethereum tries Blockscout's per-instance ETH RPC first (no API key required for this endpoint), then PublicNode, LlamaRPC, and dRPC as fallbacks; Base uses PublicNode and the Base public endpoint; BNB Chain uses PublicNode because BNB Chain's own public dataseed endpoints document that `eth_getLogs` is disabled.
+This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and 20 event pages. Public RPC providers can still rate-limit current-state `eth_call` requests. An Etherscan free-plan key may not support every chain or every endpoint; the UI will show the provider response if a chain is unavailable.
 
 A pair that currently returns zero may have been revoked or otherwise reduced to zero. The extension never changes an approval.
 
 ## Data and privacy
-When a user runs a GoPlus check, the public address is sent to GoPlus Security. During automatic approval scanning, the public wallet address is used in a read-only `eth_getLogs` query to the selected public RPC provider; token contract calls use `eth_call`. No seed phrase or private key is requested or sent.
+When a user runs a GoPlus check, the public address is sent to GoPlus Security. During an automatic approval scan, the public wallet address and API key are sent to Etherscan API V2 to retrieve indexed logs. Current allowance calls send the token address and call data to the selected public RPC endpoint. The API key is stored locally in Chrome storage and is never written to this repository. No seed phrase or private key is requested or sent.
 
 ## Important limitations
 This is an experimental prototype, not a security product or audit. A zero result within the scanned range does not prove the wallet has no older approvals. A non-zero or unlimited allowance is not automatically malicious; review whether the spender is trusted and whether the approval is necessary.
@@ -35,6 +47,6 @@ Never rely on this prototype alone to approve transactions or protect funds.
 
 ## Planned development
 1. Add NFT operator-approval discovery.
-2. Integrate a complete indexed approvals provider for lifetime wallet-wide coverage, without embedding API secrets in the extension.
+2. Improve full-history coverage and pagination.
 3. Add transaction simulation and approval risk analysis.
 4. Explore Supra-specific data and integrations.
