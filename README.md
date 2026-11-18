@@ -2,7 +2,7 @@
 
 An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 
-## Prototype v0.4.6
+## Prototype v0.4.7
 - GoPlus Security lookups for wallet address reputation and token security.
 - Automatic recent-history ERC-20 approval scan using Etherscan API V2 indexed event logs.
 - Filters `Approval(address,address,uint256)` logs by the indexed owner address.
@@ -31,9 +31,9 @@ Etherscan documents a free plan with 3 calls per second and up to 100,000 calls 
 5. Choose the project folder containing `manifest.json`.
 
 ## Automatic approval scan scope
-The scan searches the most recent 50,000 blocks for ERC-20 Approval events. It then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range.
+The scan queries Etherscan API V2 for ERC-20 Approval events in the most recent 50,000 blocks, then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range using a public RPC. Historical log queries are no longer sent to public RPC providers.
 
-This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and 20 event pages. Public RPC providers can still rate-limit current-state `eth_call` requests. An Etherscan free-plan key may not support every chain or every endpoint; the UI will show the provider response if a chain is unavailable.
+This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and 20 event pages. Public RPC providers can still rate-limit current-state `eth_call` requests. The extension uses one working public RPC endpoint for the latest block and current allowance reads; Etherscan is used for historical event indexing. An Etherscan free-plan key may not support every chain or every endpoint; the UI will show the provider response if a chain is unavailable.
 
 A pair that currently returns zero may have been revoked or otherwise reduced to zero. The extension never changes an approval.
 
