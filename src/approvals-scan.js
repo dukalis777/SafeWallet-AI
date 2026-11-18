@@ -182,7 +182,7 @@ async function mapConcurrent(items, concurrency, worker) {
   return results;
 }
 
-async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {}) {
+async function scanErc20Approvals(networkKey, ownerAddress, apiKey, onProgress = () => {}) {
   const network = APPROVAL_SCAN_NETWORKS[networkKey];
   if (!network) throw new Error("Automatic approval scans currently support Ethereum, Base, and BNB Chain.");
   if (!/^0x[a-fA-F0-9]{40}$/.test(ownerAddress)) throw new Error("Enter a valid EVM wallet address.");
@@ -198,35 +198,22 @@ async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {
 
       const latestBlock = BigInt(await approvalRpc(endpoint, "eth_blockNumber", []));
 
-      // Probe eth_getLogs at a single block first. This distinguishes a provider
-      // that refuses the method from one that only rejects wider historical ranges.
-      const probe = await approvalRpc(endpoint, "eth_getLogs", [{
-        fromBlock: toHexBlock(latestBlock),
-        toBlock: toHexBlock(latestBlock),
-        topics: [APPROVAL_EVENT_TOPIC, ownerTopic]
-      }]);
-      if (!Array.isArray(probe)) throw new Error("RPC eth_getLogs probe returned an invalid result.");
-
       const fromBlock = latestBlock >= BigInt(ERC20_APPROVAL_SCAN_WINDOW - 1)
         ? latestBlock - BigInt(ERC20_APPROVAL_SCAN_WINDOW - 1)
         : 0n;
 
-      const allLogs = [];
+      // Historical Approval events are queried through Etherscan's indexed Logs API.
+      // Current allowance reads remain read-only eth_call requests against the RPC.
       const totalBlocks = latestBlock - fromBlock + 1n;
-      let cursor = fromBlock;
-      let chunksDone = 0;
-      const totalChunks = Number((totalBlocks + BigInt(LOG_CHUNK_SIZE) - 1n) / BigInt(LOG_CHUNK_SIZE));
-
-      while (cursor <= latestBlock) {
-        const end = cursor + BigInt(LOG_CHUNK_SIZE - 1) > latestBlock
-          ? latestBlock
-          : cursor + BigInt(LOG_CHUNK_SIZE - 1);
-        const logs = await getApprovalLogs(endpoint, cursor, end, ownerTopic);
-        allLogs.push(...logs);
-        cursor = end + 1n;
-        chunksDone++;
-        onProgress({ phase: "logs", done: chunksDone, total: totalChunks, latestBlock: Number(latestBlock) });
-      }
+      const indexedLogScan = await window.SafeWalletEtherscan.getIndexedApprovalLogs(
+        network.chainId,
+        fromBlock,
+        latestBlock,
+        ownerTopic,
+        apiKey,
+        progress => onProgress(progress)
+      );
+      const allLogs = indexedLogScan.logs;
 
       const pairMap = new Map();
       for (const log of allLogs) {
@@ -240,7 +227,8 @@ async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {
       }
 
       const discoveredPairs = [...pairMap.values()].sort((a, b) => b.lastSeenBlock - a.lastSeenBlock);
-      const truncated = discoveredPairs.length > MAX_APPROVAL_PAIRS;
+      const truncatedPairs = discoveredPairs.length > MAX_APPROVAL_PAIRS;
+      const truncated = truncatedPairs || indexedLogScan.truncated;
       const selectedPairs = discoveredPairs.slice(0, MAX_APPROVAL_PAIRS);
 
       const decimalsCache = new Map();
@@ -298,7 +286,10 @@ async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {
         failedPairs,
         activeApprovals,
         truncated,
+        truncatedPairs,
+        truncatedLogs: indexedLogScan.truncated,
         maxPairs: MAX_APPROVAL_PAIRS,
+        indexer: "Etherscan API V2",
         rpcHost: new URL(endpoint).host
       };
     } catch (error) {
@@ -311,7 +302,7 @@ async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {
   }
 
   throw new Error(providerErrors.length
-    ? `Wallet scan failed on all configured RPC providers: ${providerErrors.join(" | ")}. The public providers may reject historical log queries; try again later.`
+    ? `Could not read the latest block or current allowance values from the configured RPC providers: ${providerErrors.join(" | ")}.`
     : (lastError?.message || "No RPC endpoint was available."));
 }
 
