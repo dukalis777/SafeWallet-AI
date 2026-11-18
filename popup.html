@@ -20,7 +20,7 @@
     <section class="intro">
       <div class="shield">◆</div>
       <h2>Check before you trust.</h2>
-      <p>Check public wallet and token addresses against security data.</p>
+      <p>Review public addresses and token approvals before interacting.</p>
     </section>
 
     <form id="scan-form">
@@ -39,13 +39,35 @@
 
     <section id="result" class="result hidden" aria-live="polite"></section>
 
+    <section class="allowance-panel">
+      <div class="section-heading">
+        <span class="mini-shield">✓</span>
+        <div>
+          <h3>Token allowance checker</h3>
+          <p>Read one ERC-20 approval directly from the blockchain.</p>
+        </div>
+      </div>
+      <form id="allowance-form">
+        <label for="owner-address">WALLET / OWNER ADDRESS</label>
+        <input id="owner-address" type="text" placeholder="0x..." spellcheck="false" autocomplete="off" required>
+        <label for="token-address">TOKEN CONTRACT ADDRESS</label>
+        <input id="token-address" type="text" placeholder="0x..." spellcheck="false" autocomplete="off" required>
+        <label for="spender-address">SPENDER / DAPP CONTRACT ADDRESS</label>
+        <input id="spender-address" type="text" placeholder="0x..." spellcheck="false" autocomplete="off" required>
+        <button type="submit" id="allowance-button">Check allowance <span>→</span></button>
+      </form>
+      <section id="allowance-result" class="result hidden" aria-live="polite"></section>
+      <p class="allowance-disclaimer">Read-only check for this exact wallet + token + spender pair. It does not list every approval, revoke permissions, connect your wallet, or sign transactions. Never enter a seed phrase or private key.</p>
+    </section>
+
     <footer>
-      <p><strong>Privacy:</strong> When you run a check, the public address is sent to GoPlus Security. Never enter a seed phrase or private key.</p>
+      <p><strong>Privacy:</strong> When you run checks, public addresses are sent to GoPlus Security and/or the selected public RPC provider. Never enter a seed phrase or private key.</p>
       <p><strong>Prototype notice:</strong> Results are risk signals, not a guarantee of safety. Supra checks, transaction simulation, AI analysis, and wallet-signing protection are not implemented yet.</p>
-      <span>SAFEWALLET AI · PROTOTYPE 0.2</span>
+      <span>SAFEWALLET AI · PROTOTYPE 0.3</span>
     </footer>
   </main>
   <script src="src/goplus.js"></script>
+  <script src="src/allowance.js"></script>
   <script src="src/popup.js"></script>
 </body>
 </html>
