@@ -9,7 +9,7 @@ const APPROVAL_SCAN_NETWORKS = {
   ethereum: {
     label: "Ethereum",
     chainId: 1,
-    endpoints: ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com"],
+    endpoints: ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://eth.drpc.org"],
     explorer: "https://etherscan.io"
   },
   base: {
@@ -21,7 +21,7 @@ const APPROVAL_SCAN_NETWORKS = {
   bnb: {
     label: "BNB Chain",
     chainId: 56,
-    endpoints: ["https://bsc-rpc.publicnode.com", "https://bsc-dataseed.bnbchain.org"],
+    endpoints: ["https://bsc-rpc.publicnode.com"],
     explorer: "https://bscscan.com"
   }
 };
