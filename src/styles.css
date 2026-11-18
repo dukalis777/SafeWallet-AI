@@ -114,3 +114,19 @@ footer span { color: #596783; font-size: 8px; letter-spacing: 1.2px; }
 .approval-amount { display: block; margin: 1px 0 6px; font-size: 10px; color: #e1e8f8; overflow-wrap: anywhere; }
 .approval-links { display: flex; gap: 10px; margin-top: 4px; }
 .explorer-link { color: #a5b4fc; font-size: 9px; text-decoration: underline; }
+
+.indexer-key-box {
+  margin: 4px 0 13px;
+  padding: 11px;
+  border: 1px solid #344567;
+  border-radius: 9px;
+  background: #0c1527;
+}
+.indexer-key-box label { margin-top: 0; }
+.indexer-key-box a { display: inline-block; margin-top: 7px; }
+.key-actions { display: flex; gap: 8px; }
+.key-actions button { flex: 1; margin-top: 8px; padding: 9px 8px; font-size: 10px; }
+.key-actions .secondary-button {
+  background: #18243a; color: #bdc9e2; border: 1px solid #354665;
+}
+.key-status { margin: 8px 0 0; color: #8c9bbb; font-size: 9px; line-height: 1.45; overflow-wrap: anywhere; }
