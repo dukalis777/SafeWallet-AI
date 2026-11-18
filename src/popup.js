@@ -310,8 +310,11 @@ function renderWalletApprovalScan(scan) {
   const veryLargeCount = scan.activeApprovals.filter(item => item.status === "very-large").length;
 
   let tone = "caution";
-  let title = "No active ERC-20 allowances found in this scan";
-  let tag = "NO ACTIVE ALLOWANCES IN RANGE";
+  let title = scan.discoveredPairs === 0
+    ? "No Approval events found in the scanned range"
+    : "No active allowances found among scanned pairs";
+  let tag = scan.discoveredPairs === 0 ? "NO EVENTS IN RANGE" : "NO ACTIVE ALLOWANCES IN RANGE";
+
   if (unlimitedCount > 0) {
     tone = "danger";
     title = "Unlimited allowances found";
@@ -320,6 +323,10 @@ function renderWalletApprovalScan(scan) {
     tone = "warning";
     title = "Active allowances found";
     tag = "REVIEW APPROVALS";
+  } else if (scan.failedPairs > 0) {
+    tone = "warning";
+    title = "Allowance scan incomplete";
+    tag = "CHECK INCOMPLETE";
   }
 
   const summary = document.createElement("div");
@@ -337,6 +344,9 @@ function renderWalletApprovalScan(scan) {
   addText(stats, "p", `Pairs currently at zero: ${scan.inactivePairs}`);
   addText(stats, "p", `Active allowances: ${scan.activeApprovals.length}`);
   if (scan.failedPairs) addText(stats, "p", `Pairs that could not be read: ${scan.failedPairs}`, "error-text");
+  if (scan.truncated) {
+    addText(stats, "p", `The scan found more than ${scan.maxPairs} unique pairs. Only the ${scan.maxPairs} most recently active pairs were checked.`, "error-text");
+  }
   walletApprovalResult.appendChild(stats);
 
   if (scan.activeApprovals.length) {
