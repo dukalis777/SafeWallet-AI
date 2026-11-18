@@ -33,9 +33,9 @@ Etherscan documents a free plan with 3 calls per second and up to 100,000 calls 
 5. Choose the project folder containing `manifest.json`.
 
 ## Automatic approval scan scope
-The scan queries Etherscan API V2 for ERC-20 Approval events in the most recent 50,000 blocks, then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range using a public RPC. Historical log queries are no longer sent to public RPC providers.
+The scan queries Etherscan API V2 for ERC-20 / ERC-721 `Approval` events and ERC-721 / ERC-1155 `ApprovalForAll` events across the selected recent block range (50,000 / 250,000 / 500,000 / 1,000,000 blocks). It distinguishes ERC-20 approvals from ERC-721 token-specific approvals using the event's topic/data layout. Current ERC-20 allowances, ERC-721 `getApproved` + `ownerOf`, and NFT `isApprovedForAll` states are then read through a public RPC. Historical log queries are not sent to public RPC providers.
 
-This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. Non-standard NFT permissions, signature-based permits, and approvals outside the selected history range are not included. The scan is capped at 500 distinct token + spender pairs and 20 event pages. Public RPC providers can still rate-limit current-state `eth_call` requests. The extension uses one working public RPC endpoint for the latest block and current allowance reads; Etherscan is used for historical event indexing. An Etherscan free-plan key may not support every chain or every endpoint; the UI will show the provider response if a chain is unavailable.
+This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the selected block range can be missed if they remain active. Non-standard NFT permissions, signature-based permits, and approvals outside the selected history range are not included. Each event category is capped at 500 distinct contract + spender/token-ID pairs and 20 event pages. Public RPC providers can still rate-limit current-state `eth_call` requests. The extension uses one working public RPC endpoint for the latest block and current allowance reads; Etherscan is used for historical event indexing. An Etherscan free-plan key may not support every chain or every endpoint; the UI will show the provider response if a chain is unavailable.
 
 ERC-721 single-token approvals are verified against current ownerOf and getApproved values. NFT operator approvals are verified with isApprovedForAll. The same ApprovalForAll event is used by ERC-721 and ERC-1155; ERC-165 interface checks are used to label recognized standards where available. A pair that currently returns zero may have been revoked or otherwise reduced to zero. The extension never changes an approval.
 
@@ -48,7 +48,7 @@ This is an experimental prototype, not a security product or audit. A zero resul
 Never rely on this prototype alone to approve transactions or protect funds.
 
 ## Planned development
-1. Add NFT operator-approval discovery.
-2. Improve full-history coverage and pagination.
+1. Improve full-history coverage and pagination.
+2. Add Permit2 and other signature-based allowance discovery.
 3. Add transaction simulation and approval risk analysis.
 4. Explore Supra-specific data and integrations.
