@@ -35,5 +35,6 @@ jobs:
           test -f src/allowance.js
           test -f src/etherscan.js
           test -f src/approvals-scan.js
+          test -f src/approvals-scan.js
           test -f src/popup.js
           test -f src/styles.css
