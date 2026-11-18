@@ -16,7 +16,7 @@ An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 ## Etherscan API key setup
 1. Create a free Etherscan account and API key at https://etherscan.io/myapikey.
 2. Open the SafeWallet AI extension.
-3. Under **Automatic ERC-20 approval scan**, paste the key into the Etherscan API key field and choose **Save key locally**.
+3. Under **Automatic token approval scan**, paste the key into the Etherscan API key field and choose **Save key locally**.
 4. The key is stored in `chrome.storage.local` in that browser profile; it is not included in this GitHub repository.
 5. The key is sent to Etherscan API V2 when the extension requests indexed logs.
 
