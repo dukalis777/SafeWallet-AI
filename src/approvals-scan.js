@@ -36,8 +36,22 @@ async function approvalRpc(endpoint, method, params) {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
       signal: controller.signal
     });
-    if (!response.ok) throw new Error(`RPC HTTP ${response.status}`);
-    const payload = await response.json();
+    const rawBody = await response.text();
+    let payload;
+    try {
+      payload = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok) {
+      const detail = payload?.error?.message || payload?.message || rawBody.slice(0, 240);
+      const error = new Error(`RPC HTTP ${response.status}${detail ? ": " + detail : ""}`);
+      error.status = response.status;
+      error.code = payload?.error?.code;
+      throw error;
+    }
+
     if (payload.error) {
       const error = new Error(payload.error.message || "RPC request failed");
       error.code = payload.error.code;
@@ -52,7 +66,9 @@ async function approvalRpc(endpoint, method, params) {
 
 function isLogRangeError(error) {
   const message = String(error && error.message || "").toLowerCase();
-  return error?.code === -32005 ||
+  return error?.status === 400 ||
+    error?.status === 413 ||
+    error?.code === -32005 ||
     error?.code === -32046 ||
     message.includes("cannot fulfill request") ||
     message.includes("too many") ||
@@ -170,6 +186,7 @@ async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {
 
   const ownerTopic = "0x" + ownerAddress.slice(2).toLowerCase().padStart(64, "0");
   let lastError = null;
+  const providerErrors = [];
 
   for (const endpoint of network.endpoints) {
     try {
@@ -286,12 +303,13 @@ async function scanErc20Approvals(networkKey, ownerAddress, onProgress = () => {
         try { return new URL(endpoint).host; } catch { return "RPC provider"; }
       })();
       lastError = new Error(`${host}: ${error && error.message ? error.message : "request failed"}`);
+      providerErrors.push(lastError.message);
     }
   }
 
-  throw new Error(lastError
-    ? `All configured RPC providers failed to scan Approval events. Last error: ${lastError.message}. Try again later; public RPC services can restrict historical log queries.`
-    : "No RPC endpoint was available.");
+  throw new Error(providerErrors.length
+    ? `Wallet scan failed on all configured RPC providers: ${providerErrors.join(" | ")}. The public providers may reject historical log queries; try again later.`
+    : (lastError?.message || "No RPC endpoint was available."));
 }
 
 window.SafeWalletApprovalScan = {
