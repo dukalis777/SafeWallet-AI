@@ -2,7 +2,7 @@
 
 An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 
-## Prototype v0.4.4
+## Prototype v0.4.5
 - GoPlus Security lookups for wallet address reputation and token security.
 - Automatic recent-history ERC-20 approval scan for a public wallet address on Ethereum, Base, and BNB Chain.
 - Filters ERC-20 `Approval(address,address,uint256)` logs by the indexed owner address.
@@ -19,9 +19,9 @@ An early Chrome Extension (Manifest V3) prototype for a Web3 security assistant.
 5. Choose the project folder containing `manifest.json`.
 
 ## Automatic approval scan scope
-The automatic scan searches the most recent 50,000 blocks for ERC-20 Approval events, using 1,000-block requests and adaptive smaller ranges when an RPC provider rejects a query, including HTTP 400/413 range errors. It probes `eth_getLogs` on a single block to skip providers that refuse the method. It then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range.
+The automatic scan searches the most recent 50,000 blocks for ERC-20 Approval events, using 1,000-block requests, treating a 1,000-log response as capped, and adaptively splitting into smaller ranges when an RPC provider rejects a query, including HTTP 400/413 range errors. It probes `eth_getLogs` on a single block to skip providers that refuse the method. It then reads the current `allowance(owner, spender)` for each distinct token + spender pair found in that range.
 
-This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and reports when the cap is reached. Public RPC providers can rate-limit requests or limit log queries. The scanner first probes `eth_getLogs` over a single block and skips an endpoint if it refuses the method; it preserves the HTTP/RPC error response body and reports failures from all configured endpoints; wider ranges are split down to 32-block segments when the provider reports a range/result-size limit. Ethereum uses PublicNode, LlamaRPC, and dRPC public endpoints as fallbacks; Base uses PublicNode and the Base public endpoint; BNB Chain uses PublicNode because BNB Chain's own public dataseed endpoints document that `eth_getLogs` is disabled.
+This is a bounded recent-history scan, not a complete lifetime scan. Approvals created before the searched block range can be missed if they remain active. ERC-721 / ERC-1155 operator approvals and some signature-based permissions are not included. The scan is capped at 500 distinct token + spender pairs and reports when the cap is reached. Blockscout documents a maximum of 1,000 logs per `eth_getLogs` request; the scanner splits ranges when a response reaches that cap. Public RPC providers can still rate-limit requests or limit log queries. The scanner first probes `eth_getLogs` over a single block and skips an endpoint if it refuses the method; it preserves the HTTP/RPC error response body and reports failures from all configured endpoints; wider ranges are split down to 32-block segments when the provider reports a range/result-size limit. Ethereum tries Blockscout's per-instance ETH RPC first (no API key required for this endpoint), then PublicNode, LlamaRPC, and dRPC as fallbacks; Base uses PublicNode and the Base public endpoint; BNB Chain uses PublicNode because BNB Chain's own public dataseed endpoints document that `eth_getLogs` is disabled.
 
 A pair that currently returns zero may have been revoked or otherwise reduced to zero. The extension never changes an approval.
 
